@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+!demo/dist/
+!demo/dist/**
+.turbo/
+
+# OS/Editor files
+.DS_Store
+.vscode/
+*.log

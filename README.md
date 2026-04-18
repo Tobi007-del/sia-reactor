@@ -245,7 +245,7 @@ const persist = new PersistModule({
   key: "APP_GLOBAL_STATE",
   whitelist: ["theme", "settings.brightness"], // all paths if omitted, use object if multiple reactors
   blacklist: ["settings.debug"], // optional excluded paths
-  throttle: 2500, 
+  throttle: 2500, // ms between saves
   fanout: true, // async hydration use leaf writes to sync initialized listeners.
   adapter: new IndexedDBAdapter({ dbName: "Session", version: 1, onversionchange: () => location.reload(), useSnapshot: true }) // or `LocalStorageAdapter` (instance or signature)
 }, getReactor(state)); // `Reactor` in second arg for path inference
