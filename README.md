@@ -3,11 +3,11 @@
 > The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) Engine featuring zero-allocation loops, DOM-style event propagation, microtask batching, and structural sharing.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Github](https://img.shields.io/badge/github-100000?style=for-the-badge&logo=github)](https://github.com/Tobi007-del/sia-reactor)
 [![NPM Version](https://img.shields.io/npm/v/sia-reactor.svg)](https://www.npmjs.com/package/sia-reactor)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/sia-reactor)](https://bundlephobia.com/package/sia-reactor)
+[![Github](https://img.shields.io/badge/github-100000?style=for-the-badge&logo=github)](https://github.com/Tobi007-del/sia-reactor)
 
-[Live Demo & Benchmarks](https://tobi007-del.github.io/t007-tools/packages/sia-reactor/src/index.html) | [Report Bug](https://github.com/Tobi007-del/sia-reactor/issues)
+[Live Demo & Benchmarks](https://tobi007-del.github.io/sia-reactor/src/index.html) | [Report Bug](https://github.com/Tobi007-del/sia-reactor/issues)
 
 [Chronicles](https://github.com/Tobi007-del/tmg-media-player/blob/main/CHRONICLES.md) | [Interaction Folklore](https://github.com/Tobi007-del/tmg-media-player/blob/main/FOLKLORE.md)
 
@@ -538,7 +538,7 @@ S.I.A. Reactor synthesizes core concepts from the heavyweights of web and media 
 
 No fancy screenshots here. True engineers look at performance metrics.
 
-To see the Reactor handle deep DAG mutations, DOM-style event routing, and microtask batching in real-time, visit the **[Live Demo](https://tobi007-del.github.io/t007-tools/packages/sia-reactor/src/index.html)**, open your DevTools console, and run the built-in Grand Master Stress Suite directly on your own CPU.
+To see the Reactor handle deep DAG mutations, DOM-style event routing, and microtask batching in real-time, visit the **[Live Demo](https://tobi007-del.github.io/sia-reactor/src/index.html)**, open your DevTools console, and run the built-in Grand Master Stress Suite directly on your own CPU.
 
 *NOTE: The reactor is progressively enhanced so it's performance depends on how you use it and the options you toggle, it's base form is incredibly light.*
 
