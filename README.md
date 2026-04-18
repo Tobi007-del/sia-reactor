@@ -7,7 +7,7 @@
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/sia-reactor)](https://bundlephobia.com/package/sia-reactor)
 [![Github](https://img.shields.io/badge/github-100000?style=for-the-badge&logo=github)](https://github.com/Tobi007-del/sia-reactor)
 
-[Live Demo & Benchmarks](https://tobi007-del.github.io/sia-reactor/src/index.html) | [Report Bug](https://github.com/Tobi007-del/sia-reactor/issues)
+[Live Demo & Benchmarks](https://tobi007-del.github.io/sia-reactor/index.html) | [Report Bug](https://github.com/Tobi007-del/sia-reactor/issues)
 
 [Chronicles](https://github.com/Tobi007-del/tmg-media-player/blob/main/CHRONICLES.md) | [Interaction Folklore](https://github.com/Tobi007-del/tmg-media-player/blob/main/FOLKLORE.md)
 
@@ -136,14 +136,14 @@ The primary way to use the reactor is to wrap an object using `reactive(target, 
 *NOTE: `.` and `*` are engine reserved so don't use them as object keys*
 
 ```javascript
-const state = reactive({ player: { volume: 50 } }, { smartCloning: true, referenceTracking: true });
+const store = reactive({ player: { volume: 50 } }, { smartCloning: true, referenceTracking: true }); // name it something other than `state` if intents will exist.
 
 // Public API Methods are attached directly to the object with `reactive()`!
-state.set("player.volume", (val) => Math.min(val, 100));
-state.on("player.volume", (e) => console.log(e.value));
+store.set("player.volume", (val) => Math.min(val, 100));
+store.on("player.volume", (e) => console.log(e.value));
 
-state.player.volume = 150; // Triggers mediation, clamps to 100, fires listener.
-getReactor(state); state.__Reactor__; // Reference to the underlying reactor
+store.player.volume = 150; // Triggers mediation, clamps to 100, fires listener.
+getReactor(store); store.__Reactor__; // Reference to the underlying reactor
 ```
 
 Alternatively, you can instantiate the `Reactor` class directly to keep the API from interfering with your data or [try this](#reactive-preferences-method-naming):
@@ -202,31 +202,31 @@ The engine provides native React bindings utilizing `useSyncExternalStore` and a
 import { reactive } from "sia-reactor";
 import { useReactor, useAnyReactor, useSelector, useAnySelector, usePath, effect } from "sia-reactor/adapters/react"; 
 
-const state = reactive({ user: { name: "Kosi", age: 25 }, theme: "dark" });
+const store = reactive({ user: { name: "Kosi", age: 25 }, theme: "dark" });
 
 // 1. The Tracked State (Valtio-style)
 function Profile() {
-  const sameState = useReactor(state); // `useReactorSnapshot()` if mutable issues arise
+  const sameStore = useReactor(store); // `useReactorSnapshot()` if mutable issues arise
   useAnyReactor(); // when you just want state from any reactor
-  // Only re-renders if state.user.name mutates. Completely ignores age and theme!
-  return <div>{sameState.user.name + otherState.user.name}</div>;
+  // Only re-renders if store.user.name mutates. Completely ignores age and theme!
+  return <div>{sameStore.user.name + otherStore.user.name}</div>;
 } // no snapshots like Valtio, you can read or write to anything
 
 // 2. The Slice Selector (Zustand-style)
 function Theme() {
-  const theme = useSelector(state, (s) => s.theme); // `useSelectorSnapshot()` if mutable issues arise
-  const newName = useAnySelector(() => state.user.name + spouseState.user.name); // when you just want to derive any state from any reactor
+  const theme = useSelector(store, (s) => s.theme); // `useSelectorSnapshot()` if mutable issues arise
+  const newName = useAnySelector(() => store.user.name + spouseStore.user.name); // when you just want to derive any state from any reactor
   return <div>Theme: {theme}</div>;
 }
 
 // 3. The Direct Path Observer
 function AgeObserver() {
-  const age = usePath(state, "user.age"); // pass in a normal object for an auto-scoped instance
+  const age = usePath(store, "user.age"); // pass in a normal object for an auto-scoped instance
   return <div>Age: {age}</div>;
 }
 
 // 4. Vanilla Side Effects (Runs anywhere, framework agnostic)
-const stopTracking = effect(() => console.log("User name changed to:", state.user.name)); // read or write as you wish
+const stopTracking = effect(() => console.log("User name changed to:", store.user.name)); // read or write as you wish
 ```
 
 ### Modules: The Extension Port
@@ -240,37 +240,37 @@ Automatically syncs your State to LocalStorage, SessionStorage, Memory or Indexe
 import { reactive, Reactor, getReactor } from "sia-reactor";
 import { PersistModule, LocalStorageAdapter, IndexedDBAdapter, SessionStorageAdapter, CookieAdapter, MemoryAdapter } from "sia-reactor/modules";
 
-const state = reactive({ theme: "dark", settings: { volume: 50, brightness: 30 } });
+const store = reactive({ theme: "dark", settings: { volume: 50, brightness: 30 } });
 const persist = new PersistModule({
-  key: "APP_GLOBAL_STATE",
+  key: "APP_GLOBAL_STORE",
   whitelist: ["theme", "settings.brightness"], // all paths if omitted, use object if multiple reactors
   blacklist: ["settings.debug"], // optional excluded paths
   throttle: 2500, // ms between saves
   fanout: true, // async hydration use leaf writes to sync initialized listeners.
   adapter: new IndexedDBAdapter({ dbName: "Session", version: 1, onversionchange: () => location.reload(), useSnapshot: true }) // or `LocalStorageAdapter` (instance or signature)
-}, getReactor(state)); // `Reactor` in second arg for path inference
-state.use(persist); // calls `.setup()`, use after all attachments, `id` is the second param too.
+}, getReactor(store)); // `Reactor` in second arg for path inference
+store.use(persist); // calls `.setup()`, use after all attachments, `id` is the second param too.
 
 // Seperate attach sample if multiple reactors desired
-persist.attach(uiState, "ui").setup(appState, "app"); // or paths: "app.ui"
+persist.attach(uiStore, "ui").setup(appStore, "app"); // or paths: "app.ui"
 persist.config.whitelist = { ui: ["settings.theme"], app: ["settings.volume"] }; // Multi-reactor filtering by id key. If you didn't pass ids, use implicit index keys: { "0": [...], "1": [...] }
 
 ```
 
 #### The Time Travel Module
-Record state frames, step through history, and optionally attach a ready-to-use vanilla debug overlay.
+Record state frames, step through history, and optionally attach a ready-to-use vanilla debug overlay. Beware of paradoxes, seperate intent from state even in time.
 
 ```javascript
 import { TimeTravelModule } from "sia-reactor/modules";
 import { effect, TimeTravelOverlay } from "sia-reactor/adapters/vanilla";
 import "sia-reactor/css/time-travel-overlay.css";
 
-const time = new TimeTravelModule({ maxHistory: 300, loop: false, rate: 150, whitelist: ["state.playing", "state.currentTime"] });
-state.use(time);
+const time = new TimeTravelModule({ maxHistory: 300, loop: false, rate: 150, whitelist: ["store.playing", "store.currentTime"] });
+store.use(time);
 
 // If persist uses an async adapter (e.g. IndexedDB), wait till after hydration:
-persist.state.once("hydrated", () => state.use(time)); // starts `false`, one-time stall until it flips
-effect(() => persist.state.hydrated && state.use(time), { once: true }) // same logic, different look :)
+persist.state.once("hydrated", () => store.use(time)); // starts `false`, one-time stall until it flips
+effect(() => persist.state.hydrated && store.use(time), { once: true }) // same logic, different look :)
 
 const overlay = new TimeTravelOverlay(time, { color: "#e26e02", startOpen: false, devOnly: true, container: document.body }); // optional debug interface for visulazation
 ```
@@ -315,7 +315,7 @@ const state = reactive(
     suffix: 'Now',
     whitelist: ['set', 'get', 'on', 'off'] // keys you're sure won't interfere with your own key names
   }
-);
+); // name `state` as no intents will exist
 // Whitelisted methods keep original names
 state.set('count', (v) => v + 1);
 state.get('count', (v) => v);
@@ -375,7 +375,7 @@ Because there is no "bubbling" or "event wave" yet, these methods do not receive
 rtr.set("user.age", (value, terminated, payload) => {
   console.log(payload.type);       // "set" | "get" | "delete"
   console.log(payload.target);     // The exact anatomy of the mutation (see below)
-  console.log(payload.root);       // Reference to the entire `state` tree
+  console.log(payload.root);       // Reference to the entire state tree
   console.log(payload.terminated); // Boolean: Did a previous mediator kill this action?
   console.log(payload.rejectable); // Boolean: Is this target wrapped in `intent()`?
 }); // you could use external callbacks but typed with `Payload<T, "user.age">`
@@ -413,7 +413,7 @@ rtr.set("user.age", (value) => {
 ### 2. The Asynchronous Dimension: The S.I.A. Event Loop
 When you use `.on()` or `.once()` (Listeners), you are sitting in the **Microtask Queue**. The memory has already been safely written, the Proxy traps have closed, and the engine is now broadcasting a DOM-Style "Mutation Wave" across the state tree.
 
-If you mutate `state.user.profile.name = "Kosi"`, the event wave travels like this:
+If you mutate `store.user.profile.name = "Kosi"`, the event wave travels like this:
 1. **Capture Phase:** `*` (Root) ➔ `user` ➔ `user.profile`
 2. **Target Phase:** `user.profile.name`
 3. **Bubble Phase:** `user.profile` ➔ `user` ➔ `*` (Root)
@@ -464,8 +464,8 @@ rtr.on("intent.playing", (e) => {
 When you listen to a parent object (like `"user.profile"`), you will naturally catch all mutations to its children. 
 
 To help you instantly differentiate between the object *itself* being replaced, versus a *child* property mutating deep inside of it, the Reactor intelligently morphs the `e.type`:
-* If `state.user.profile = {}` happens, the listener receives `e.type === "set"`.
-* If `state.user.profile.name = "Kosi"` happens, the parent listener receives `e.type === "update"`.
+* If `store.user.profile = {}` happens, the listener receives `e.type === "set"`.
+* If `store.user.profile.name = "Kosi"` happens, the parent listener receives `e.type === "update"`.
 
 This allows for highly fine-grained syncing bridges across your application without writing heavy for-loop diffing algorithms! Use `{ depth: n }` to control how deep the path bubbles you see are, i.e. 
 
@@ -538,7 +538,7 @@ S.I.A. Reactor synthesizes core concepts from the heavyweights of web and media 
 
 No fancy screenshots here. True engineers look at performance metrics.
 
-To see the Reactor handle deep DAG mutations, DOM-style event routing, and microtask batching in real-time, visit the **[Live Demo](https://tobi007-del.github.io/sia-reactor/src/index.html)**, open your DevTools console, and run the built-in Grand Master Stress Suite directly on your own CPU.
+To see the Reactor handle deep DAG mutations, DOM-style event routing, and microtask batching in real-time, visit the **[Live Demo](https://tobi007-del.github.io/sia-reactor/index.html)**, open your DevTools console, and run the built-in Grand Master Stress Suite directly on your own CPU.
 
 *NOTE: The reactor is progressively enhanced so it's performance depends on how you use it and the options you toggle, it's base form is incredibly light.*
 

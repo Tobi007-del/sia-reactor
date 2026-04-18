@@ -139,6 +139,18 @@
   font-size: 0.75rem;
 }
 
+.tt-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tt-filter-row .muted {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .tt-row {
   display: flex;
   gap: 8px;
@@ -162,8 +174,20 @@
   font-size: 0.75rem;
   border-radius: 8px;
   padding: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--sia-tt-color) var(--sia-tt-bg-soft);
+}
+
+.tt-filter-input.tt-io {
+  min-height: 30px;
+  height: 30px;
+  max-height: 30px;
+  resize: none;
+  width: 100%;
+  flex: 1 1 auto;
+  padding-block: 6px;
+}
+
+.tt-filter-input.tt-io::-webkit-scrollbar {
+  display: none;
 }
 
 .tt-io::placeholder {

@@ -4,8 +4,8 @@ import { NIL, NOOP } from "../../../core/consts";
 import { Reactor } from "../../../core/reactor";
 import { type Reactive, getReactor } from "../../../core/mixins";
 import type { EffectOptions, ReactorBuild } from "../../../types/reactor";
+import type { DeepReadonly } from "../../../types/obj";
 import { Autotracker, withTracker } from "../../autotracker";
-import { DeepReadonly } from "../../../super";
 
 /**
  * Subscribes to a derived slice of Reactor state.

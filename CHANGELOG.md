@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.27
+
+### Patch Changes
+
+- Cleaner Loops, Removed off bug and Better API
+
 ## 0.0.26
 
 ### Patch Changes

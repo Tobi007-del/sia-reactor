@@ -1,4 +1,4 @@
-import { BaseReactorModule, ReactorModuleId, type ModulePaths } from "./base";
+import { BaseReactorModule, ReactorModuleId, type ReactorModulePathConfig } from "./base";
 import { Reactor } from "../core/reactor";
 import type { REvent } from "../types/reactor";
 import { setAny, deleteAny, fanout, deepClone } from "../utils/obj";
@@ -27,13 +27,7 @@ export interface HistoryEntry<T extends object = any, P extends Paths<T> = Paths
   rid: ReactorModuleId; // lightweight for minimal storage overhead
 }
 
-export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T>> {
-  /** Whitelist paths only, no need for "*"; instead don't pass anything.
-   * - `P[]`: one shared path list for all attached reactors.
-   * - `Record<string, P[]>`: per-reactor path lists keyed by module reactor id. If you don't pass ids in `.attach()`, use implicit index keys (`"0"`, `"1"`, ...). */
-  whitelist: ModulePaths<P>;
-  /** Exclude filter for recorded paths. Checked only during record events. */
-  blacklist?: ModulePaths<P>;
+export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T>> extends Omit<ReactorModulePathConfig<T, P>, "disabled"> {
   /** Maximum number of history entries to keep (Memory Cap), you lose replaying Sessions or the Genesis */
   maxHistoryLength: number;
   /** Max delay between events during playback (ms) */
@@ -82,22 +76,16 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   protected override onAttach(rtr: Reactor<any>, rid: ReactorModuleId) {
     rtr.config.referenceTracking = rtr.config.smartCloning = rtr.config.eventTimeStamps = true;
     if (!this.state.history.length || !this.state.initialState[rid]) this.state.initialState[rid] = rtr.snapshot();
-    for (const p of this.getPaths(this.config.whitelist, rid)) rtr.on(p, this.record, { signal: this.signal });
+    this.attachPaths(rtr, rid);
   }
-  protected handleWhitelist({ value: paths, oldValue: prevs }: REvent<TimeTravelConfig<T, P>, "whitelist">) {
-    for (const [rid, rtr] of this.rtrs) {
-      for (const p of this.getPaths(prevs, rid)) rtr.off(p, this.record);
-      for (const p of this.getPaths(paths, rid)) (rtr.off(p, this.record), rtr.on(p, this.record, { signal: this.signal }));
-    }
-  }
+  protected override onPath = this.record;
   /** Chronicling the lifecycle of the system, Captures the essence of every mutation wave that bubbles up. */
   protected record(e: REvent<any, P>, rid = this.rids.get(e.reactor)!) {
-    if (this.getPaths(this.config.blacklist, rid).includes(e.path as any)) return;
     if (!this.state.paused) return;
     if (this.state.currentFrame < this.state.history.length) fanout(this.state, "history", this.state.history.slice(0, this.state.currentFrame), { atomic: true }); // we must destroy the "Alternate Future" (the redo stack) before recording.
     if (this.state.history.length >= this.config.maxHistoryLength!) fanout(this.state, "history", this.state.history.slice(1), { atomic: true }); // Drop the oldest memory if we exceed the limit
     const en = { path: e.target.path, value: e.reactor.snapshot(false, e.target.value), oldValue: e.reactor.snapshot(false, e.target.oldValue), type: e.staticType, deltat: e.timestamp! - this.lastTimestamp, rid } as HistoryEntry<any, P>;
-    ((e.rejected && (en.rejected = e.rejected), !e.target.hadKey && (en.hadKey = false)), this.state.history.push(en));
+    (e.rejected && (en.rejected = e.rejected), !e.target.hadKey && (en.hadKey = false)), this.state.history.push(en);
     this.state.currentFrame = this.state.history.length; // Lock the playhead to the absolute present
     this.lastTimestamp = e.timestamp!; // Update the metronome with the timestamp of the latest event
   }
@@ -134,7 +122,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   /** Step through time, Moves the playhead and teleports the state. */
   public step(stride = 1, forward = true) {
     if (forward ? this.state.currentFrame >= this.state.history.length : this.state.currentFrame <= 0) return; // Already at the edge of the timeline
-    (this.pause(), forward ? this.jumpTo(this.state.currentFrame + stride) : this.jumpTo(this.state.currentFrame - stride));
+    this.pause(), forward ? this.jumpTo(this.state.currentFrame + stride) : this.jumpTo(this.state.currentFrame - stride);
   }
   /** Step back in time, Moves the playhead backward and teleports the state. */
   public undo = () => this.step(1, false);
@@ -176,8 +164,8 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     const resume = !this.state.paused,
       target = this.state.currentFrame;
     this.state.paused = false; // Shield import reconstruction from being recorded into history
-    for (const [rid, rtr] of this.rtrs) (setAny(rtr.core, "*" as any, deepClone(this.state.initialState[rid], rtr.config)), rtr.tick()); // Flush the genesis wave to the UI
-    ((this.state.currentFrame = 0), this.jumpTo(target), resume && this.play()); // Anchor at genesis before reconstructing target frame
+    for (const [rid, rtr] of this.rtrs) setAny(rtr.core, "*" as any, deepClone(this.state.initialState[rid], rtr.config)), rtr.tick(); // Flush the genesis wave to the UI
+    (this.state.currentFrame = 0), this.jumpTo(target), resume && this.play(); // Anchor at genesis before reconstructing target frame
   }
 }
 

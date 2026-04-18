@@ -1,4 +1,4 @@
-import { BaseReactorModule, wpArr, type ModulePaths, type ReactorModuleId } from "./base";
+import { BaseReactorModule, wpArr, type ReactorModulePathConfig, type ReactorModuleId } from "./base";
 import { StorageAdapter, LocalStorageAdapter, AsyncStorageAdapter, type StorageAdapterConstructor, type AsyncStorageAdapterConstructor } from "../utils/store";
 import { type FanoutTuple, fanoutOptsArr, setAny, getAny, fanout, mergeObjs, parseEvtOpts } from "../utils/obj";
 import { setTimeout } from "../utils/fn";
@@ -6,17 +6,9 @@ import { Reactor } from "../core/reactor";
 import type { REvent, Inert } from "../types/reactor";
 import type { Paths } from "../types/obj";
 
-export interface PersistConfig<T extends object, P extends Paths<T> = Paths<T>> {
-  /** Whether the persistence is disabled and cleared */
-  disabled: boolean;
+export interface PersistConfig<T extends object, P extends Paths<T> = Paths<T>> extends ReactorModulePathConfig<T, P> {
   /** The key under which to store the persisted data */
   key: string;
-  /** Whitelist paths only, no need for "*"; instead don't pass anything.
-   * - `P[]`: one shared path list for all attached reactors.
-   * - `Record<string, P[]>`: per-reactor path lists keyed by module reactor id. If you don't pass ids in `.attach()`, use implicit index keys (`"0"`, `"1"`, ...). */
-  whitelist: ModulePaths<P>;
-  /** Exclude filter for save-trigger paths. Checked only during save events. */
-  blacklist?: ModulePaths<P>;
   /** Storage adapter class or instance to use, can satisfy `instanceof` or just definition, cast to `any` if the latter */
   adapter: Inert<StorageAdapter> | Inert<AsyncStorageAdapter> | Inert<StorageAdapterConstructor> | Inert<AsyncStorageAdapterConstructor>; // pass in the instance if u wanna do custom config
   /** Throttle time for saving changes */
@@ -44,7 +36,6 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
   public adapter!: StorageAdapter | AsyncStorageAdapter;
   protected hydrateSeq = 0;
   protected saveTimeoutId = 0;
-
   public get payload() {
     let res: Record<string, any> | undefined = this.rtrs.size > 1 ? {} : undefined;
     for (const [rid, rtr] of this.rtrs) {
@@ -70,8 +61,11 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     this.config.on("whitelist", this.handleWhitelist, { signal: this.signal, immediate: true });
   }
 
-  protected override onAttach(rtr: Reactor<any>, rid: ReactorModuleId) {
-    for (const p of this.getPaths(this.config.whitelist, rid)) !this.config.disabled ? rtr.on(p, this.save, { signal: this.signal, immediate: true }) : rtr.off(p, this.save);
+  protected override onAttach = this.attachPaths;
+
+  protected override onPath(e: REvent<any, P>, rid: ReactorModuleId) {
+    if (!this.state.hydrated) return e.stopImmediatePropagation(); // told y'all to register persist module first, really hope y'all did
+    if (!this.saveTimeoutId) this.saveTimeoutId = setTimeout(() => (this.adapter.set(this.config.key, this.payload), (this.saveTimeoutId = 0)), this.config.throttle, this.signal);
   }
 
   protected async handleAdapter({ value = LocalStorageAdapter }: REvent<PersistConfig<T, P>, "adapter">) {
@@ -87,11 +81,15 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
       saved = !isAsync ? saved : await saved;
       if (seq !== this.hydrateSeq || !saved) return;
       for (const [rid, rtr] of this.rtrs) {
-        const paths = this.getPaths(this.config.whitelist, rid);
-        const entry = this.rtrs.size > 1 ? getAny(saved, rid as any) : saved; // allows retrieving with path-like ids
+        const paths = this.getPaths(this.config.whitelist, rid),
+          entry = this.rtrs.size > 1 ? getAny(saved, rid as any) : saved; // allows retrieving with path-like ids
         if (!entry) continue;
-        const set = (p: any, news: any, olds: any) => (depth ? (fanout as any) : setAny)(rtr.core, p, merge ? mergeObjs(news, olds) : olds, depth ? { depth, crossRealms: rtr.config.crossRealms } : undefined); // if sync, merge directly, else fanout with options for granularity
-        for (const p of this.config.whitelist ? paths : wpArr) set(p, getAny(rtr.core, p), getAny(entry, p));
+        const set = (p: any, news: any, olds: any) => (depth ? (fanout as any) : setAny)(rtr.core, p, merge ? mergeObjs(news, olds) : olds, depth ? { depth, crossRealms: rtr.config.crossRealms } : undefined), // if sync, merge directly, else fanout with options for granularity
+          setPaths = this.config.whitelist ? paths : wpArr;
+        for (let i = 0, len = setPaths.length; i < len; i++) {
+          const path = setPaths[i];
+          set(path, getAny(rtr.core, path), getAny(entry, path));
+        }
       }
       for (const [rid, rtr] of this.rtrs) rtr.tick(depth ? "*" : this.config.whitelist ? this.getPaths(this.config.whitelist, rid) : "*"); // if sync, tick written paths b4 listeners init, else tick written paths if known or all
     } finally {
@@ -102,19 +100,6 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
   protected handleDisabled({ value }: REvent<PersistConfig<T, P>, "disabled">) {
     for (const [rid, rtr] of this.rtrs) this.onAttach(rtr, rid);
     value && this.adapter?.remove(this.config.key);
-  }
-
-  protected handleWhitelist({ value: paths, oldValue: prevs }: REvent<PersistConfig<T, P>, "whitelist">) {
-    for (const [rid, rtr] of this.rtrs) {
-      for (const p of this.getPaths(prevs, rid)) rtr.off(p, this.save);
-      for (const p of this.getPaths(paths, rid)) (rtr.off(p, this.save), !this.config.disabled && rtr.on(p, this.save, { signal: this.signal, immediate: true }));
-    }
-  }
-
-  protected save(e: REvent<any, P>) {
-    if (this.config.blacklist && this.getPaths(this.config.blacklist, e.reactor).includes(e.path as any)) return;
-    if (!this.state.hydrated) return e.stopImmediatePropagation(); // told y'all to register persist module first, really hope y'all did
-    if (!this.saveTimeoutId) this.saveTimeoutId = setTimeout(() => (this.adapter.set(this.config.key, this.payload), (this.saveTimeoutId = 0)), this.config.throttle, this.signal);
   }
 
   /** Clears persisted payload for this module instance and drops any pending save. */

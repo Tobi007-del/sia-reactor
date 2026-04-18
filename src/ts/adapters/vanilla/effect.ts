@@ -1,3 +1,4 @@
+import { NIL } from "../../super";
 import type { EffectOptions } from "../../types/reactor";
 import { Autotracker, withTracker } from "../autotracker";
 
@@ -11,11 +12,14 @@ import { Autotracker, withTracker } from "../autotracker";
  * @example
  * const stop = effect(() => console.log(state.count));
  */
-export function effect(callback: () => void, options?: EffectOptions): () => void {
+export function effect(callback: () => void, options: EffectOptions = NIL): () => void {
   const atrkr = new Autotracker();
   let destroyed = false;
+  const cleanup = () => ((destroyed = true), atrkr.destroy());
   (function execute() {
-    if (!destroyed) withTracker(atrkr, () => callback()), atrkr.callback(execute, options);
+    if (destroyed) return;
+    withTracker(atrkr, callback);
+    options.once ? cleanup() : atrkr.callback(execute, options);
   })();
-  return () => ((destroyed = true), atrkr.destroy());
+  return cleanup;
 }

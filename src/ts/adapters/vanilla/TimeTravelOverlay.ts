@@ -1,7 +1,10 @@
 import { reactive } from "../../core/mixins";
 import { CTX } from "../../core/consts";
-import { TimeTravelModule } from "../../modules";
-import { createEl, formatKeyForDisplay as formatKFD, keyEventAllowed, parseForARIAKS, type keysSettings, nuke } from "../../utils";
+import { wpArr } from "../../modules/base";
+import { TimeTravelModule } from "../../modules/timeTravel";
+import { createEl } from "../../utils/dom";
+import { nuke } from "../../utils/obj";
+import { formatKeyForDisplay as formatKFD, keyEventAllowed, parseForARIAKS, type keysSettings } from "../../utils/keys";
 import { effect } from "./effect";
 
 const keys: keysSettings = {
@@ -46,6 +49,8 @@ export class TimeTravelOverlay {
     this.time = time;
     this.config = reactive({ title: `Time Travel Overlay ${(this.index = ++TimeTravelOverlay.count)}`, ...build } as TimeTravelOverlayConfig);
     this.state.open = !!this.config.startOpen;
+    let wlLive = false,
+      blLive = false;
     const s = this.time.state,
       host = createEl("div", { className: "tt-overlay-host" }),
       toggle = createEl("button", { className: "tt-overlay-toggle", type: "button", onclick: () => (this.state.open = !this.state.open) }),
@@ -62,17 +67,26 @@ export class TimeTravelOverlay {
       exp = createEl("button", { textContent: `Export${formatKFD(keys.shortcuts!.export)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.export, false), onclick: () => (this.state.import = this.time.export(null, 2)) }),
       imp = createEl("button", { textContent: `Import${formatKFD(keys.shortcuts!.import)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.import, false), onclick: () => this.state.import.trim().length && this.time.import(this.state.import) }),
       clr = createEl("button", { textContent: `Clear${formatKFD(keys.shortcuts!.clear)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clear, false), onclick: () => (this.state.import = "") }),
-      payload = createEl("textarea", { className: "tt-io", readOnly: true, placeholder: "current payload json", title: "current payload" }),
-      io = createEl("textarea", { className: "tt-io", placeholder: "timeline payload json", oninput: () => (this.state.import = io.value) }),
+      payload = createEl("textarea", { className: "tt-io", readOnly: true, placeholder: "current payload json", title: "Current History Entry" }),
+      io = createEl("textarea", { className: "tt-io", placeholder: "timeline payload json", title: "Time History", oninput: () => (this.state.import = io.value) }),
       foot = createEl("p", { className: "tt-footnote", textContent: "Want this in your app? " }),
       link = createEl("a", { target: "_blank", rel: "noreferrer noopener", textContent: "sia-reactor", href: "https://www.npmjs.com/package/sia-reactor" }),
       box = createEl("div", { className: "tt-status-box" }),
       status = createEl("div", { className: "tt-status-row" }),
+      filters = createEl("div", { className: "tt-status-row" }),
+      filterBox = createEl("div", { className: "tt-status-box" }),
+      whitelistLabel = createEl("span", { className: "muted", textContent: "Whitelist:" }),
+      blacklistLabel = createEl("span", { className: "muted", textContent: "Blacklist:" }),
+      whitelist = createEl("input", { className: "tt-filter-input tt-io", placeholder: 'a.b, c.d or {"0":["a.b"]}', title: "Whitelist paths", onfocus: () => (wlLive = true), onblur: () => ((wlLive = false), (whitelist.value = formatPaths(this.time.config.whitelist, "*"))), oninput: (_, parsed: any = parsePaths(whitelist.value)) => parsed !== null && (this.time.config.whitelist = parsed) }),
+      blacklist = createEl("input", { className: "tt-filter-input tt-io", placeholder: 'a.b, c.d or {"0":["a.b"]}', title: "Blacklist paths", onfocus: () => (blLive = true), onblur: () => ((blLive = false), (blacklist.value = formatPaths(this.time.config.blacklist, ""))), oninput: (_, parsed: any = parsePaths(blacklist.value, true)) => parsed !== null && (this.time.config.blacklist = parsed) }),
+      filterRow1 = createEl("div", { className: "tt-filter-row" }),
+      filterRow2 = createEl("div", { className: "tt-filter-row" }),
       row1 = createEl("div", { className: "tt-row" }),
       row2 = createEl("div", { className: "tt-row" }),
       row3 = createEl("div", { className: "tt-row" });
     status.append((box.append(frame), box), clrHistory);
-    panel.append(title, status, (row1.append(undo, redo, genesis), row1), (row2.append(playPause, rewind), row2), payload, range, (row3.append(exp, imp, clr), row3), io, (foot.appendChild(link), foot));
+    filters.append((filterBox.append((filterRow1.append(whitelistLabel, whitelist), filterRow1), (filterRow2.append(blacklistLabel, blacklist), filterRow2)), filterBox));
+    panel.append(title, status, (row1.append(undo, redo, genesis), row1), (row2.append(playPause, rewind), row2), payload, range, filters, (row3.append(exp, imp, clr), row3), io, (foot.appendChild(link), foot));
     host.append(toggle, panel);
     this.els = { host, toggle, panel, title, frame, clrHistory, undo, redo, genesis, playPause, rewind, range, exp, imp, clr, payload, io };
     this.keyup = (e) => {
@@ -103,6 +117,7 @@ export class TimeTravelOverlay {
         clr.disabled = imp.disabled = !this.state.import.trim().length;
         io.value !== this.state.import && (io.value = this.state.import);
       }),
+      effect(() => (!wlLive && (whitelist.value = formatPaths(this.time.config.whitelist, "*")), !blLive && (blacklist.value = formatPaths(this.time.config.blacklist, "")))),
     ];
     this.clups.push(...sync);
   }
@@ -125,4 +140,21 @@ function getDock(container?: HTMLElement) {
   if (layer.parentElement !== host) host.appendChild(layer);
   const dock = getDirChild(layer, "tt-overlay-dock") || createEl("div", { className: "tt-overlay-dock" });
   return dock.parentElement !== layer && layer.appendChild(dock), dock;
+}
+function formatPaths(paths: unknown, emptyText: string): string {
+  return !paths ? emptyText : Array.isArray(paths) ? (paths.length ? paths.join(", ") : emptyText) : "object" === typeof paths ? JSON.stringify(paths) : String(paths);
+}
+function parsePaths(raw: string, allowEmpty = false): unknown {
+  const text = raw.trim();
+  if (!text) return allowEmpty ? undefined : wpArr;
+  if (text[0] === "{")
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && "object" === typeof parsed) return parsed;
+    } catch {
+      return null; // invalid JSON resets to last valid
+    }
+  // prettier-ignore
+  const list = text.split(",").map((p) => p.trim()).filter(Boolean);
+  return list.length ? list : allowEmpty ? undefined : wpArr;
 }
