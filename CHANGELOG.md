@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.29
+
+### Patch Changes
+
+- Storage Adapters type safety and key defaults
+
 ## 0.0.28
 
 ### Patch Changes

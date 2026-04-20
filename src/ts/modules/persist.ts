@@ -33,7 +33,7 @@ export interface PersistState {
  */
 export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>> extends BaseReactorModule<T, PersistConfig<T, P>, PersistState> {
   public static readonly moduleName: string = "persist";
-  public adapter!: StorageAdapter | AsyncStorageAdapter;
+  public adapter!: StorageAdapter<T> | AsyncStorageAdapter<T>;
   protected hydrateSeq = 0;
   protected saveTimeoutId = 0;
   public get payload() {

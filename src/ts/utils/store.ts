@@ -4,25 +4,28 @@ import { NIL, NOOP } from "../core/consts";
 export type JSONReplacer = ((this: any, key: string, value: any) => any) | (number | string)[] | null;
 export type JSONReviver = ((this: any, key: string, value: any) => any) | undefined;
 export interface StorageAdapterConfig {
+  /** Default key for storage operations. */
+  key: string;
+  /** Flag to enable debug logging. */
   debug: boolean;
-  /** Optional `JSON.stringify()` like replacer to be used where applicable. */
-  replacer?: JSONReplacer;
-  /** Optional `JSON.parse()` like reviver to be used where applicable. */
-  reviver?: JSONReviver;
+  /** `JSON.stringify()` like replacer to be used where applicable. */
+  replacer: JSONReplacer;
+  /** `JSON.parse()` like reviver to be used where applicable. */
+  reviver: JSONReviver;
 }
 export interface CookieOptions {
   /** Cookie path scope, defaults to root for maximum accessibility. */
   path: string;
-  /** Optional cookie domain scope, e.g. ".example.com". */
-  domain?: string;
+  /** Cookie domain scope, e.g. ".example.com". */
+  domain: string;
   /** Cookie Secure attribute, defaults to `false` but should be `true` in production for HTTPS sites. */
   secure: boolean;
   /** Cookie SameSite attribute for CSRF protection, defaults to "Lax" for a balance of security and usability. */
   sameSite: "Strict" | "Lax" | "None";
-  /** Optional cookie lifetime in seconds, e.g. 604800 for a week. */
-  maxAge?: number;
-  /** Optional absolute cookie expiry date, e.g. (new Date()).setDate(new Date().getDate() + 7), "Wed, 21 Oct 2023 07:28:00 GMT" (UTC Format). */
-  expires?: string | Date;
+  /** Cookie lifetime in seconds, e.g. 604800 for a week. */
+  maxAge: number;
+  /** Absolute cookie expiry date, e.g. (new Date()).setDate(new Date().getDate() + 7), "Wed, 21 Oct 2023 07:28:00 GMT" (UTC Format). */
+  expires: string | Date;
 }
 export interface CookieAdapterConfig extends StorageAdapterConfig, CookieOptions {}
 export interface MemoryAdapterConfig extends StorageAdapterConfig {
@@ -36,7 +39,7 @@ export interface IndexedDBAdapterConfig extends StorageAdapterConfig, IDBTransac
   version: number;
   /** First store is default during operations if none is provided, i.e. ["VAULT", "TEMP"] -> clear(store = "VAULT") {} */
   stores: string[];
-  /** return a preffered instance or `throw` to prevent accessing the database */
+  /** return a preferred instance or `throw` to prevent accessing the database */
   onidb: () => any;
   /** Called when the database request needs to be upgraded */
   onupgradeneeded: (database: IDBDatabase, event: IDBVersionChangeEvent) => void;
@@ -52,10 +55,10 @@ export interface IndexedDBAdapterConfig extends StorageAdapterConfig, IDBTransac
 
 // CONSTRUCTOR INTERFACES
 export interface StorageAdapterConstructor<Config extends StorageAdapterConfig = StorageAdapterConfig> {
-  new (config?: Config): StorageAdapter<Config>;
+  new (config?: Partial<Config>): StorageAdapter<any, Config>;
 }
 export interface AsyncStorageAdapterConstructor<Config extends StorageAdapterConfig = StorageAdapterConfig> {
-  new (config?: Config): AsyncStorageAdapter<Config>;
+  new (config?: Partial<Config>): AsyncStorageAdapter<any, Config>;
 }
 
 // ABSTRACT CLASSES
@@ -67,7 +70,7 @@ export abstract class BaseStorageAdapter<Config extends StorageAdapterConfig = S
   public readonly name: string = "StorageAdapter";
   public config: Config;
   protected warn = (act = "", mssg = "Support issue or Private Mode", key = "", store = "") => this.config.debug && console.warn(`[${this.constructor.name} \`${act}\`] Failed${key ? `for ${key}` : ""} ${store ? ` on "${store}"` : ""} ${(this.config as any).dbName ? ` at ${(this.config as any).dbName}` : ""} (${mssg})`);
-  constructor(config?: Config) {
+  constructor(config?: Partial<Config>) {
     this.config = { debug: false, ...config } as Config;
   }
 }
@@ -76,10 +79,10 @@ export abstract class BaseStorageAdapter<Config extends StorageAdapterConfig = S
  * Extend this class to implement specific synchronous storage mechanisms (e.g., LocalStorage).
  * @typeParam Config Configuration object type for the adapter.
  */
-export abstract class StorageAdapter<Config extends StorageAdapterConfig = StorageAdapterConfig> extends BaseStorageAdapter<Config> {
+export abstract class StorageAdapter<S = any, Config extends StorageAdapterConfig = StorageAdapterConfig> extends BaseStorageAdapter<Config> {
   public readonly name: string = "SyncStorageAdapter";
-  public abstract get(key: string): any;
-  public abstract set(key: string, value: any): boolean;
+  public abstract get<T = S>(key: string): T | undefined;
+  public abstract set<T = S>(key: string, value: T): boolean;
   public abstract remove(key: string): boolean;
   public abstract clear(): boolean;
 }
@@ -88,10 +91,10 @@ export abstract class StorageAdapter<Config extends StorageAdapterConfig = Stora
  * Extend this class to implement specific asynchronous storage mechanisms (e.g., IndexedDB).
  * @typeParam Config Configuration object type for the adapter.
  */
-export abstract class AsyncStorageAdapter<Config extends StorageAdapterConfig = StorageAdapterConfig> extends BaseStorageAdapter<Config> {
+export abstract class AsyncStorageAdapter<S = any, Config extends StorageAdapterConfig = StorageAdapterConfig> extends BaseStorageAdapter<Config> {
   public readonly name: string = "AsyncStorageAdapter";
-  public abstract get(key: string): Promise<any>;
-  public abstract set(key: string, value: any): Promise<boolean>;
+  public abstract get<T = S>(key: string): Promise<T | undefined>;
+  public abstract set<T = S>(key: string, value: T): Promise<boolean>;
   public abstract remove(key: string): Promise<boolean>;
   public abstract clear(): Promise<boolean>;
 }
@@ -99,17 +102,17 @@ export abstract class AsyncStorageAdapter<Config extends StorageAdapterConfig = 
 // MAIN CLASSES
 /**
  * - The LocalStorage Adapter (~5MB per origin, browser-dependent).
- * - Provides aN implementation of the `StorageAdapter` interface using the browser's `localStorage`.
+ * - Provides an implementation of the `StorageAdapter` interface using the browser's `localStorage`.
  * Handles JSON serialization and deserialization, and includes error handling for unsupported environments.
  */
-export class LocalStorageAdapter extends StorageAdapter {
+export class LocalStorageAdapter<S = any, Config extends StorageAdapterConfig = StorageAdapterConfig> extends StorageAdapter<S, Config> {
   public readonly name: string = "LocalStorage";
   /**
    * Reads and parses a value from localStorage.
    * @param key Storage key.
    * @returns Parsed value, or `undefined` when missing/unreadable.
    */
-  public override get(key: string, reviver = this.config.reviver) {
+  public override get<T = S>(key = this.config.key, reviver = this.config.reviver): T | undefined {
     try {
       const v = localStorage.getItem(key);
       return v ? JSON.parse(v, reviver) : undefined;
@@ -123,7 +126,7 @@ export class LocalStorageAdapter extends StorageAdapter {
    * @param value Value to serialize.
    * @returns `true` when write succeeds, else `false`.
    */
-  public override set(key: string, value: any, replacer = this.config.replacer) {
+  public override set<T = S>(key = this.config.key, value: T, replacer = this.config.replacer) {
     try {
       return localStorage.setItem(key, JSON.stringify(value, replacer as any)), true;
     } catch (e) {
@@ -135,7 +138,7 @@ export class LocalStorageAdapter extends StorageAdapter {
    * @param key Storage key.
    * @returns `true` when removal succeeds, else `false`.
    */
-  public override remove(key: string) {
+  public override remove(key = this.config.key) {
     try {
       return localStorage.removeItem(key), true;
     } catch (e) {
@@ -159,14 +162,14 @@ export class LocalStorageAdapter extends StorageAdapter {
  * - Provides an implementation of the `StorageAdapter` interface using the browser's `sessionStorage`.
  * Handles JSON serialization and deserialization, and includes error handling for unsupported environments.
  */
-export class SessionStorageAdapter extends StorageAdapter {
+export class SessionStorageAdapter<S = any, Config extends StorageAdapterConfig = StorageAdapterConfig> extends StorageAdapter<S, Config> {
   public readonly name: string = "SessionStorage";
   /**
    * Reads and parses a value from sessionStorage.
    * @param key Storage key.
    * @returns Parsed value, or `undefined` when missing/unreadable.
    */
-  public override get(key: string, reviver = this.config.reviver) {
+  public override get<T = S>(key = this.config.key, reviver = this.config.reviver): T | undefined {
     try {
       const v = sessionStorage.getItem(key);
       return v ? JSON.parse(v, reviver) : undefined;
@@ -180,7 +183,7 @@ export class SessionStorageAdapter extends StorageAdapter {
    * @param value Value to serialize.
    * @returns `true` when write succeeds, else `false`.
    */
-  public override set(key: string, value: any, replacer = this.config.replacer) {
+  public override set<T = S>(key = this.config.key, value: T, replacer = this.config.replacer) {
     try {
       return sessionStorage.setItem(key, JSON.stringify(value, replacer as any)), true;
     } catch (e) {
@@ -192,7 +195,7 @@ export class SessionStorageAdapter extends StorageAdapter {
    * @param key Storage key.
    * @returns `true` when removal succeeds, else `false`.
    */
-  public override remove(key: string) {
+  public override remove(key = this.config.key) {
     try {
       return sessionStorage.removeItem(key), true;
     } catch (e) {
@@ -216,17 +219,17 @@ export class SessionStorageAdapter extends StorageAdapter {
  * - Provides an implementation of the `StorageAdapter` interface using an in-memory `Map`.
  * Useful for testing or non-persistent storage needs, mimics the API and behavior of LocalStorage.
  */
-export class MemoryAdapter extends StorageAdapter<MemoryAdapterConfig> {
+export class MemoryAdapter<S = any, Config extends MemoryAdapterConfig = MemoryAdapterConfig> extends StorageAdapter<S, Config> {
   public readonly name: string = "Memory";
-  constructor(build?: Partial<MemoryAdapterConfig>) {
-    super({ store: new Map(), ...build } as MemoryAdapterConfig);
+  constructor(build?: Partial<Config>) {
+    super({ store: new Map(), ...build } as Config);
   }
   /**
    * Reads and parses a value from memory storage.
    * @param key Storage key.
    * @returns Parsed value, or `undefined` when missing/unreadable.
    */
-  public override get(key: string, reviver = this.config.reviver) {
+  public override get<T = S>(key = this.config.key, reviver = this.config.reviver): T | undefined {
     try {
       const v = this.config.store.get(key);
       return v ? JSON.parse(v, reviver) : undefined;
@@ -240,7 +243,7 @@ export class MemoryAdapter extends StorageAdapter<MemoryAdapterConfig> {
    * @param value Value to serialize.
    * @returns `true` when write succeeds, else `false`.
    */
-  public override set(key: string, value: any, replacer = this.config.replacer) {
+  public override set<T = S>(key = this.config.key, value: T, replacer = this.config.replacer) {
     try {
       return this.config.store.set(key, JSON.stringify(value, replacer as any)), true;
     } catch (e) {
@@ -252,7 +255,7 @@ export class MemoryAdapter extends StorageAdapter<MemoryAdapterConfig> {
    * @param key Storage key.
    * @returns `true` when removal succeeds, else `false`.
    */
-  public override remove(key: string) {
+  public override remove(key = this.config.key) {
     try {
       return this.config.store.delete(key), true;
     } catch (e) {
@@ -276,18 +279,18 @@ export class MemoryAdapter extends StorageAdapter<MemoryAdapterConfig> {
  * - Provides an implementation of the `StorageAdapter` interface using `document.cookie`.
  * Handles JSON serialization/deserialization and URL-safe key/value encoding.
  */
-export class CookieAdapter extends StorageAdapter<CookieAdapterConfig> {
+export class CookieAdapter<S = any, Config extends CookieAdapterConfig = CookieAdapterConfig> extends StorageAdapter<S, Config> {
   public readonly name: string = "Cookie";
   protected deets = (opts: Partial<CookieOptions> = NIL, _d = opts.domain ?? this.config.domain, _m = opts.maxAge ?? this.config.maxAge, _e = opts.expires ?? this.config.expires) => `Path=${opts.path ?? this.config.path}; SameSite=${opts.sameSite ?? this.config.sameSite}${_d ? `; Domain=${_d}` : ""}${opts.secure ?? this.config.secure ? "; Secure" : ""}${_m !== undefined ? `; Max-Age=${_m}` : ""}${_e !== undefined ? `; Expires=${_e instanceof Date ? _e.toUTCString() : _e}` : ""}`;
-  constructor(build?: Partial<CookieAdapterConfig>) {
-    super({ secure: "undefined" !== typeof window && location.protocol === "https:", ...COOKIE_ADAPTER_BUILD, ...build } as CookieAdapterConfig);
+  constructor(build?: Partial<Config>) {
+    super({ secure: "undefined" !== typeof window && location.protocol === "https:", ...COOKIE_ADAPTER_BUILD, ...build } as Config);
   }
   /**
    * Reads and parses a cookie visible to the current page scope.
    * @param key Cookie key.
    * @returns Parsed value, or `undefined` when missing/unreadable.
    */
-  public override get(key: string, reviver = this.config.reviver) {
+  public override get<T = S>(key = this.config.key, reviver = this.config.reviver): T | undefined {
     try {
       const k = encodeURIComponent(key) + "=";
       for (const pair of document.cookie ? document.cookie.split("; ") : []) {
@@ -306,7 +309,7 @@ export class CookieAdapter extends StorageAdapter<CookieAdapterConfig> {
    * @param opts Optional per-call cookie options.
    * @returns `true` when write succeeds, else `false`.
    */
-  public override set(key: string, value: any, opts?: Partial<CookieOptions>, replacer = this.config.replacer) {
+  public override set<T = S>(key = this.config.key, value: T, opts?: Partial<CookieOptions>, replacer = this.config.replacer) {
     try {
       return (document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(JSON.stringify(value, replacer as any))}; ${this.deets(opts)}`), true;
     } catch {
@@ -319,7 +322,7 @@ export class CookieAdapter extends StorageAdapter<CookieAdapterConfig> {
    * @param opts Optional per-call scope overrides.
    * @returns `true` when removal succeeds, else `false`.
    */
-  public override remove(key: string, opts?: Partial<CookieOptions>) {
+  public override remove(key = this.config.key, opts?: Partial<CookieOptions>) {
     try {
       return (document.cookie = `${encodeURIComponent(key)}=; ${this.deets({ ...opts, maxAge: 0, expires: new Date(0) })}`), true; // standard deletion technique
     } catch {
@@ -348,11 +351,11 @@ export class CookieAdapter extends StorageAdapter<CookieAdapterConfig> {
  * - Provides an implementation of the `AsyncStorageAdapter` interface using the IndexedDB database.
  * Handles database connection management, object store setup, and includes error handling for unsupported environments and common issues, requires snapshots(non-proxies) for persistence.
  */
-export class IndexedDBAdapter extends AsyncStorageAdapter<IndexedDBAdapterConfig> {
+export class IndexedDBAdapter<S = any, Config extends IndexedDBAdapterConfig = IndexedDBAdapterConfig> extends AsyncStorageAdapter<S, Config> {
   public readonly name: string = "IndexedDB";
   protected db?: IDBDatabase;
-  constructor(build?: Partial<IndexedDBAdapterConfig>) {
-    super({ ...INDEXED_DB_ADAPTER_BUILD, ...build } as IndexedDBAdapterConfig);
+  constructor(build?: Partial<Config>) {
+    super({ ...INDEXED_DB_ADAPTER_BUILD, ...build } as Config);
   }
   /**
    * Returns a connected IndexedDB instance, opening it when needed.
@@ -375,7 +378,7 @@ export class IndexedDBAdapter extends AsyncStorageAdapter<IndexedDBAdapterConfig
    * @param store Optional object-store override.
    * @returns Stored value, or `undefined` when missing/unreadable.
    */
-  public override async get(key: string, store = this.config.stores[0], options: Partial<IDBTransactionOptions> = this.config): Promise<any> {
+  public override async get<T = S>(key = this.config.key, store = this.config.stores[0], options: Partial<IDBTransactionOptions> = this.config): Promise<T | undefined> {
     try {
       const req = (await this.idb()).transaction(store, "readonly", options).objectStore(store).get(key);
       return new Promise((res) => (req.onsuccess = () => res(req.result)));
@@ -390,7 +393,7 @@ export class IndexedDBAdapter extends AsyncStorageAdapter<IndexedDBAdapterConfig
    * @param store Optional object-store override.
    * @returns `true` when write succeeds, else `false`.
    */
-  public override async set(key: string, value: any, store = this.config.stores[0], options: Partial<IDBTransactionOptions> = this.config): Promise<boolean> {
+  public override async set<T = S>(key = this.config.key, value: T, store = this.config.stores[0], options: Partial<IDBTransactionOptions> = this.config): Promise<boolean> {
     try {
       const req = (await this.idb()).transaction(store, "readwrite", options).objectStore(store).put(value, key);
       return new Promise((res) => (req.onsuccess = () => res(true)));
@@ -404,7 +407,7 @@ export class IndexedDBAdapter extends AsyncStorageAdapter<IndexedDBAdapterConfig
    * @param store Optional object-store override.
    * @returns `true` when delete succeeds, else `false`.
    */
-  public override async remove(key: string, store = this.config.stores[0], options: Partial<IDBTransactionOptions> = this.config): Promise<boolean> {
+  public override async remove(key = this.config.key, store = this.config.stores[0], options: Partial<IDBTransactionOptions> = this.config): Promise<boolean> {
     try {
       const req = (await this.idb()).transaction(store, "readwrite", options).objectStore(store).delete(key);
       return new Promise((res) => (req.onsuccess = () => res(true)));
