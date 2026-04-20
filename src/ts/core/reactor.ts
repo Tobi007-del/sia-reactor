@@ -6,7 +6,7 @@ import { canHandle, getTrailRecords, parseEvtOpts, inAny, getAny, setAny, delete
 import { BaseReactorModule as ReactorModule, ReactorModuleId } from "../modules/base";
 
 /*
- * ========= THE S.I.A (State Intent Architecture) `Reactor` CODE PATTERN WATCHLIST =========
+ * ========= THE S.I.A (State & Intent Architecture) `Reactor` CODE PATTERN WATCHLIST =========
  * 1. non-stack loops & multiple optimizations, this is surgical work on the root of reactivity
  * 2. used cached loop lengths to optimize b4 JIT Compiler does for optimal speed throughput,
  * avoided myth of reverse while loops so new CPU's don't waste memory on a forward l1 Cache miss
@@ -25,7 +25,7 @@ import { BaseReactorModule as ReactorModule, ReactorModuleId } from "../modules/
  */
 
 // ===========================================================================
-// The S.I.A (State Intent Architecture) `Reactor`
+// The S.I.A (State & Intent Architecture) `Reactor`
 // ===========================================================================
 
 /**

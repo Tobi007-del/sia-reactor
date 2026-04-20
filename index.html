@@ -23,8 +23,7 @@
     <meta name="twitter:data1" content="Open the landing page" />
     <meta name="twitter:label2" content="Or inspect the source" />
     <meta name="twitter:data2" content="Browse the repository" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <style>
       :root {
         --t007-orange: #e26e02;
@@ -42,6 +41,7 @@
       *::after,
       *::before {
         box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
       }
       html {
         background: #06080d;
@@ -57,21 +57,15 @@
         color: var(--white);
         font-family: "Avenir Next", "Segoe UI Variable", "Trebuchet MS", "Gill Sans", sans-serif;
         isolation: isolate;
-        background-image: url("assets/images/lake.png");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        -webkit-tap-highlight-color: transparent;
       }
       body::before {
         content: "";
         position: fixed;
         inset: 0;
+        width: 100%;
+        height: 100lvh;
+        background: center/cover no-repeat url("assets/images/lake.png"), black;
         z-index: -1;
-        backdrop-filter: blur(2px) saturate(115%);
-        -webkit-backdrop-filter: blur(2px) saturate(115%);
-        background: linear-gradient(172deg, rgba(6, 9, 14, 0.46), rgba(6, 9, 14, 0.24)), radial-gradient(circle at 20% 14%, rgba(216, 194, 255, 0.17), transparent 37%), radial-gradient(circle at 82% 11%, rgba(226, 110, 2, 0.16), transparent 34%);
         pointer-events: none;
       }
       ::selection {
@@ -83,7 +77,7 @@
         color: var(--white);
       }
       .page-shell {
-        width: min(1120px, 96vw);
+        max-width: 1120px;
         min-height: calc(100dvh - clamp(1.6rem, 4vw, 2.6rem));
         margin-inline: auto;
         display: grid;
@@ -91,13 +85,16 @@
         gap: clamp(0.7rem, 1.5vh, 1rem);
       }
       .hero-panel {
-        border: 1px solid var(--line);
-        border-radius: 1rem;
-        background: linear-gradient(170deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07));
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.1);
         padding: clamp(0.9rem, 2.3vw, 1.4rem);
-        backdrop-filter: blur(14px) saturate(135%);
-        -webkit-backdrop-filter: blur(14px) saturate(135%);
+      }
+      .hero-panel,
+      .last-section {
+        border-radius: 1rem;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--surface), var(--surface-strong));
+        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(13px) saturate(128%);
+        -webkit-backdrop-filter: blur(13px) saturate(128%);
       }
       .eyebrow {
         display: inline-flex;
@@ -118,16 +115,37 @@
         gap: clamp(0.8rem, 1.8vw, 1.2rem);
         margin-top: 0.8rem;
       }
+      .hero-copy-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: clamp(0.68rem, 1.8vw, 1.25rem);
+      }
+      .hero-logo {
+        flex: 0 0;
+        display: block;
+        width: 9.5rem;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: 0 9px 21px rgba(0, 0, 0, 0.34), 0 0 0 4px rgba(255, 255, 255, 0.05);
+      }
+      .hero-text {
+        flex: 1 1;
+        min-width: 15rem;
+      }
       .hero-copy h1 {
         margin: 0;
-        font-size: clamp(1.35rem, 1rem + 1.5vw, 2.05rem);
+        font-size: clamp(1.35rem, 1rem + 1.5vw, 1.7rem);
         line-height: 1.08;
         letter-spacing: 0.012em;
         text-wrap: balance;
       }
       .hero-copy p {
         margin: 0.65rem 0 0;
-        font-size: clamp(0.88rem, 0.8rem + 0.28vw, 0.98rem);
+        font-size: clamp(0.8rem, 0.8rem + 0.28vw, 0.9rem);
         line-height: 1.5;
         color: var(--text-muted);
         max-width: 66ch;
@@ -218,12 +236,6 @@
       .last-section {
         align-content: start;
         padding: clamp(0.75rem, 1.8vw, 1rem);
-        border-radius: 1rem;
-        border: 1px solid var(--line);
-        background: linear-gradient(180deg, var(--surface), var(--surface-strong));
-        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(13px) saturate(128%);
-        -webkit-backdrop-filter: blur(13px) saturate(128%);
       }
       .links-head {
         display: flex;
@@ -411,6 +423,11 @@
           grid-template-columns: 1fr;
         }
       }
+      @media (max-width: 320px) {
+        .hero-text {
+          min-width: 8rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -419,33 +436,38 @@
         <span class="eyebrow">SIA Reactor Landing</span>
         <div class="hero-main">
           <div class="hero-copy">
-            <h1>
-              S.I.A. (State & Intent Architecture)
-              <span class="magic">
-                <span class="magic-star">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
-                    <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
-                  </svg>
-                </span>
-                <span class="magic-star">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
-                    <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
-                  </svg>
-                </span>
-                <span class="magic-star">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
-                    <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
-                  </svg>
-                </span>
-                <span class="magic-star">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
-                    <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
-                  </svg>
-                </span>
-                <span class="magic-text">Reactor</span>
-              </span>
-            </h1>
-            <p>State decides what is true. Intent decides what changes next. Start with the core flow, then explore showcase apps powered by the same event-driven thinking.</p>
+            <div class="hero-copy-grid">
+              <img class="hero-logo" src="favicon.ico" alt="SIA Reactor logo" />
+              <div class="hero-text">
+                <h1>
+                  S.I.A. (State & Intent Architecture)
+                  <span class="magic">
+                    <span class="magic-star">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+                        <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
+                      </svg>
+                    </span>
+                    <span class="magic-star">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+                        <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
+                      </svg>
+                    </span>
+                    <span class="magic-star">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+                        <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
+                      </svg>
+                    </span>
+                    <span class="magic-star">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+                        <path d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z" />
+                      </svg>
+                    </span>
+                    <span class="magic-text">Reactor</span>
+                  </span>
+                </h1>
+                <p>State decides what is true. Intent decides what changes next. Start with the core flow, then explore showcase apps powered by the same event-driven thinking.</p>
+              </div>
+            </div>
           </div>
           <div class="meta-grid" aria-label="Landing overview">
             <article class="meta-card">
@@ -454,7 +476,7 @@
             </article>
             <article class="meta-card">
               <strong>Core rhythm</strong>
-              <span>State first, data DOM keeps it visible</span>
+              <span>State first, data DOM keeps it live</span>
             </article>
             <article class="meta-card">
               <strong>Start here</strong>
@@ -462,7 +484,7 @@
             </article>
             <article class="meta-card">
               <strong>Then branch out</strong>
-              <span>Showcase apps, same S.I.A. language</span>
+              <span>Showcase apps, same language</span>
             </article>
           </div>
         </div>

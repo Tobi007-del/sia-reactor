@@ -3,7 +3,7 @@ import type { WildPaths } from "../types/obj";
 import { getTrailRecords } from "../utils/obj";
 
 // ===========================================================================
-// The S.I.A (State Intent Architecture) `Event`
+// The S.I.A (State & Intent Architecture) `Event`
 // ===========================================================================
 
 /**

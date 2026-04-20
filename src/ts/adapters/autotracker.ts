@@ -7,7 +7,7 @@ import { canHandle, nuke } from "../utils/obj";
 export let activeTracker: Autotracker<any> | null = null;
 
 // ===========================================================================
-// The S.I.A (State Intent Architecture) `AutoTracker`
+// The S.I.A (State & Intent Architecture) `AutoTracker`
 // ===========================================================================
 
 /**

@@ -191,7 +191,7 @@ window.addEventListener("load", () => setTimeout(runBenchmark, 2000));
 // REACTOR ARCHITECTURE BRIEFING
 // ==========================================
 log(`%c🧠 WHAT IS THE S.I.A. REACTOR?`, "color: #FF9800; font-size: 16px; font-weight: bold; padding-bottom: 4px;");
-log(`The State Intent Architecture (S.I.A.) Reactor is a high-performance reactivity engine.`);
+log(`The State & Intent Architecture (S.I.A.) Reactor is a high-performance reactivity engine.`);
 log(`At its core, it is a surgical wrapper around a native JavaScript Proxy, designed to`);
 log(`give raw data objects a DOM-like nervous system without destroying the frame budget.\n`);
 

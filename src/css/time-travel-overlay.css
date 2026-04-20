@@ -9,6 +9,21 @@
   position: relative;
 }
 
+.tt-overlay-host *,
+.tt-overlay-host *::before,
+.tt-overlay-host *::after {
+  box-sizing: border-box;
+}
+
+:where(.tt-overlay-host) *,
+:where(.tt-overlay-host) *::after,
+:where(.tt-overlay-host) *::before {
+  padding: 0;
+  margin: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sia-tt-color) transparent;
+}
+
 :where(.tt-overlay-host) *::selection {
   color: currentColor;
   background-color: var(--sia-tt-color);

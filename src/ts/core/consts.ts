@@ -1,7 +1,7 @@
 import { Autotracker } from "../adapters/autotracker";
 
 // ===========================================================================
-// The S.I.A (State Intent Architecture) Constants
+// The S.I.A (State & Intent Architecture) Constants
 // ===========================================================================
 
 /** Global context object for sharing state across the reactor runtime. */
