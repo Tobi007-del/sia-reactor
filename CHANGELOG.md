@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.30
+
+### Patch Changes
+
+- Fixed overlay time module inference bug
+
 ## 0.0.29
 
 ### Patch Changes

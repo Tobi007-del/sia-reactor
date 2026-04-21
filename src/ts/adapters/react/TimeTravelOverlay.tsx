@@ -6,7 +6,7 @@ import { useISOLayoutEffect } from "./utils";
 /** React props for controlling the vanilla TimeTravel overlay. */
 export interface TimeTravelOverlayProps extends Partial<TimeTravelOverlayConfig> {
   /** Module instance controlled by this overlay bridge. */
-  time: TimeTravelModule;
+  time: TimeTravelModule<any, any>;
 }
 
 /**
