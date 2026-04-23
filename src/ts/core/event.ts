@@ -117,8 +117,8 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
   /**
    * Marks a rejectable event as rejected.
    * @param reason Optional rejection reason or identity.
-   * @example e.resolve("html5Tech"); // identity
-   * @example e.resolve("User is not logged in"); // reason
+   * @example e.reject("html5Tech"); // identity
+   * @example e.reject("User is not logged in"); // reason
    */
   public reject(reason?: string): void {
     if (!this.rejectable) return this.reactor.log(`[ReactorEvent] Ignored \`reject()\` call on a non-rejectable ${this.staticType} at "${this.path}"`);

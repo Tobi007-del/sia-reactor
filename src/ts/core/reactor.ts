@@ -436,7 +436,7 @@ export class Reactor<T extends object> {
     return clone;
   }
 
-  protected syncAdd<P extends WildPaths<T>>(key: "get" | "set" | "delete" | "watch", path: P, cb: any, opts: SyncOptions | undefined, onImmediate: (immediate: boolean | "auto") => void = NOOP): () => boolean | undefined {
+  protected addSync<P extends WildPaths<T>>(key: "get" | "set" | "delete" | "watch", path: P, cb: any, opts: SyncOptions | undefined, onImmediate: (immediate: boolean | "auto") => void = NOOP): () => boolean | undefined {
     const { lazy = false, once = false, signal, immediate = false } = parseEvtOpts(opts, EVT_OPTS.MEDIATOR),
       store = (this[`${key}${key.endsWith("t") ? "t" : ""}ers` as "getters"] ??= new Map()) as Map<WildPaths<T>, Array<GetterRecord<T> | SetterRecord<T> | DeleterRecord<T> | WatcherRecord<T>>>;
     let cords = store.get(path),
@@ -457,7 +457,7 @@ export class Reactor<T extends object> {
     lazy ? this.stall(task) : task();
     return this.bindSignal(cord!, signal);
   }
-  protected syncDrop<P extends WildPaths<T>>(store: Map<WildPaths<T>, any[]> | undefined, path: P, cb: any): boolean | undefined {
+  protected dropSync<P extends WildPaths<T>>(store: Map<WildPaths<T>, any[]> | undefined, path: P, cb: any): boolean | undefined {
     const cords = store?.get(path);
     if (!cords) return undefined;
     for (let i = 0, len = cords.length; i < len; i++) {
@@ -477,7 +477,7 @@ export class Reactor<T extends object> {
    * const cleanup = rtr.get("user.name", (value) => String(value).trim());
    */
   public get<P extends WildPaths<T>>(path: P, callback: Getter<T, P>, options?: SyncOptions): GetterRecord<T>["clup"] {
-    return this.syncAdd("get", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && getAny(this.core, path)); // a progressive enhancment for gets that are virtual and should not affect init
+    return this.addSync("get", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && getAny(this.core, path)); // a progressive enhancment for gets that are virtual and should not affect init
   }
   /** Registers a get mediator for a path that only triggers once. */
   public gonce<P extends WildPaths<T>>(path: P, callback: Getter<T, P>, options?: SyncOptions): GetterRecord<T>["clup"] {
@@ -490,7 +490,7 @@ export class Reactor<T extends object> {
    * @returns `undefined` when the path has no records, `false` when records exist but callback is not found, `true` when removed.
    */
   public noget<P extends WildPaths<T>>(path: P, callback: Getter<T, P>): boolean | undefined {
-    return this.syncDrop(this.getters, path, callback);
+    return this.dropSync(this.getters, path, callback);
   }
 
   /**
@@ -503,7 +503,7 @@ export class Reactor<T extends object> {
    * rtr.set("user.name", (value) => String(value).trim());
    */
   public set<P extends WildPaths<T>>(path: P, callback: Setter<T, P>, options?: SyncOptions): SetterRecord<T>["clup"] {
-    return this.syncAdd("set", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && setAny(this.core, path, getAny(this.core, path)!));
+    return this.addSync("set", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && setAny(this.core, path, getAny(this.core, path)!));
   }
   /** Registers a set mediator for a path that only triggers once. */
   public sonce<P extends WildPaths<T>>(path: P, callback: Setter<T, P>, options?: SyncOptions): SetterRecord<T>["clup"] {
@@ -516,7 +516,7 @@ export class Reactor<T extends object> {
    * @returns `undefined` when the path has no records, `false` when records exist but callback is not found, `true` when removed.
    */
   public noset<P extends WildPaths<T>>(path: P, callback: Setter<T, P>): boolean | undefined {
-    return this.syncDrop(this.setters, path, callback);
+    return this.dropSync(this.setters, path, callback);
   }
 
   /**
@@ -529,7 +529,7 @@ export class Reactor<T extends object> {
    * rtr.delete("cache.temp", () => TERMINATOR);
    */
   public delete<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>, options?: SyncOptions): DeleterRecord<T>["clup"] {
-    return this.syncAdd("delete", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && deleteAny(this.core, path));
+    return this.addSync("delete", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && deleteAny(this.core, path));
   }
   /** Registers a delete mediator for a path that only triggers once. */
   public donce<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>, options?: SyncOptions): DeleterRecord<T>["clup"] {
@@ -542,7 +542,7 @@ export class Reactor<T extends object> {
    * @returns `undefined` when the path has no records, `false` when records exist but callback is not found, `true` when removed.
    */
   public nodelete<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>): boolean | undefined {
-    return this.syncDrop(this.deleters, path, callback);
+    return this.dropSync(this.deleters, path, callback);
   }
 
   /**
@@ -556,7 +556,7 @@ export class Reactor<T extends object> {
    * const cleanup = rtr.watch("user.name", (value) => console.log(value));
    */
   public watch<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>, options?: SyncOptions): WatcherRecord<T>["clup"] {
-    return this.syncAdd("watch", path, callback, options, (imm) => imm !== "auto" && inAny(this.core, path) && ((target) => callback(target.value, { type: "init", target, currentTarget: target, root: this.core, rejectable: false } as Payload<T, P>))(this.getContext(path)));
+    return this.addSync("watch", path, callback, options, (imm) => imm !== "auto" && inAny(this.core, path) && ((target) => callback(target.value, { type: "init", target, currentTarget: target, root: this.core, rejectable: false } as Payload<T, P>))(this.getContext(path)));
   }
   /** Registers a watcher for a path that only triggers once. */
   public wonce<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>, options?: SyncOptions): WatcherRecord<T>["clup"] {
@@ -569,7 +569,7 @@ export class Reactor<T extends object> {
    * @returns `undefined` when the path has no records, `false` when records exist but callback is not found, `true` when removed.
    */
   public nowatch<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>): boolean | undefined {
-    return this.syncDrop(this.watchers, path, callback);
+    return this.dropSync(this.watchers, path, callback);
   }
 
   /**

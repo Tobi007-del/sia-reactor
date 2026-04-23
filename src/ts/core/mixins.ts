@@ -2,7 +2,7 @@ import { RAW, INERTIA, REJECTABLE, INDIFFABLE, VERSION, SSVERSION, NIL } from ".
 import { Reactor } from "./reactor";
 import type { ReactorBuild, Inert, Intent, Live, State, Volatile, Stable } from "../types/reactor";
 
-/** Reactor method names exposed on objects returned by {@link reactive}. */
+/** `Reactor` method names exposed on objects returned by `reactive()`. */
 export const methods = ["tick", "stall", "nostall", "get", "gonce", "noget", "set", "sonce", "noset", "delete", "donce", "nodelete", "watch", "wonce", "nowatch", "on", "once", "off", "snapshot", "use", "reset", "destroy"] as const;
 
 type Method = (typeof methods)[number];
@@ -13,15 +13,22 @@ type ReactiveMethodMap<T extends object, P extends ReactivePreferences | undefin
   [K in Method as [Prefix<P>, Suffix<P>] extends ["", ""] ? (P extends { whitelist: readonly Method[] } ? (K extends Whitelist<P> ? never : K) : K) : P extends { whitelist: readonly Method[] } ? (K extends Whitelist<P> ? `${Prefix<P>}${K}${Suffix<P>}` : K) : `${Prefix<P>}${K}${Suffix<P>}`]: Pick<Reactor<T>, Method>[K];
 };
 
+/** Exposed `Reactor` methods and `__Reactor__` of a `reactive()` object. */
+export type APIKey<T extends object = any, P extends ReactivePreferences | undefined = undefined> = keyof ReactiveMethodMap<T, P> | "__Reactor__";
+/** `keyof` type with `Reactor` methods and `__Reactor__` property excluded, representing the runtime enumerable shape. */
+export type PureKeyof<T extends object, P extends ReactivePreferences | undefined = undefined> = Exclude<keyof T, APIKey<T, P>>;
+/** Type representing a `reactive()` object with mapped `Reactor` methods and `__Reactor__`. */
+export type Reactive<T extends object, P extends ReactivePreferences | undefined = undefined> = T & ReactiveMethodMap<T, P> & { __Reactor__: Reactor<T> };
+/** Object type with only the non-reactor props of a `reactive()` object, representing the runtime enumerable shape. */
+export type Pure<T extends object, P extends ReactivePreferences | undefined = undefined> = Pick<T, PureKeyof<T, P>>;
 export interface ReactivePreferences {
-  /** Prefix applied to exposed reactor methods. */
+  /** Prefix applied to exposed `Reactor` methods. */
   prefix?: string;
-  /** Suffix applied to exposed reactor methods. */
+  /** Suffix applied to exposed `Reactor` methods. */
   suffix?: string;
   /** Methods that should keep their original names when affixes are used. */
   whitelist?: readonly Method[]; // keys you're already using
 }
-export type Reactive<T extends object, P extends ReactivePreferences | undefined = undefined> = T & ReactiveMethodMap<T, P> & { __Reactor__: Reactor<T> };
 
 /**
  * Attaches `Reactor` APIs to a state object and returns its reactive proxy from the reactor's core.

@@ -164,7 +164,8 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     const resume = !this.state.paused,
       target = this.state.currentFrame;
     this.state.paused = false; // Shield import reconstruction from being recorded into history
-    for (const [rid, rtr] of this.rtrs) setAny(rtr.core, "*" as any, deepClone(this.state.initialState[rid], rtr.config)), rtr.tick(); // Flush the genesis wave to the UI
+    for (const [rid, rtr] of this.rtrs) fanout(rtr.core, "*" as any, deepClone(this.state.initialState[rid], rtr.config));
+    for (const rtr of this.rtrs.values()) rtr.tick(); // Flush the genesis wave to the UI
     (this.state.currentFrame = 0), this.jumpTo(target), resume && this.play(); // Anchor at genesis before reconstructing target frame
   }
 }

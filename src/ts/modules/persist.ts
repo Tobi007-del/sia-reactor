@@ -91,7 +91,7 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
           set(path, getAny(rtr.core, path), getAny(entry, path));
         }
       }
-      for (const [rid, rtr] of this.rtrs) rtr.tick(depth ? "*" : this.config.whitelist ? this.getPaths(this.config.whitelist, rid) : "*"); // if sync, tick written paths b4 listeners init, else tick written paths if known or all
+      for (const [rid, rtr] of this.rtrs) rtr.tick(depth ? "*" : this.config.whitelist ? this.getPaths(this.config.whitelist, rid) : "*"); // if sync, tick written paths b4 init, else if known or all
     } finally {
       if (seq === this.hydrateSeq) this.state.hydrated = true;
     }
