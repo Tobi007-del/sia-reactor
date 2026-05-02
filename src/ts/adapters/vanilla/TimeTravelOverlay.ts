@@ -130,15 +130,12 @@ export class TimeTravelOverlay {
   }
 }
 
-function getDirChild(parent: HTMLElement, className: string): HTMLElement | undefined {
-  for (const child of parent.children) if (child instanceof HTMLElement && child.classList.contains(className)) return child;
-}
 function getDock(container?: HTMLElement) {
   const host = container && container !== document.documentElement ? container : document.body;
   if (host !== document.body && getComputedStyle(host).position === "static") host.style.position = "relative";
-  const layer = getDirChild(host, "tt-overlay-layer") || createEl("div", { className: "tt-overlay-layer" }, undefined, { position: host === document.body ? "fixed" : "absolute" });
+  const layer = host.querySelector(":scope > .tt-overlay-layer") || createEl("div", { className: "tt-overlay-layer" }, undefined, { position: host === document.body ? "fixed" : "absolute" });
   if (layer.parentElement !== host) host.appendChild(layer);
-  const dock = getDirChild(layer, "tt-overlay-dock") || createEl("div", { className: "tt-overlay-dock" });
+  const dock = layer.querySelector(":scope > .tt-overlay-dock") || createEl("div", { className: "tt-overlay-dock" });
   return dock.parentElement !== layer && layer.appendChild(dock), dock;
 }
 function formatPaths(paths: unknown, emptyText: string): string {

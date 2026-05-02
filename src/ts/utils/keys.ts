@@ -1,3 +1,5 @@
+import { getActiveEl } from "./dom";
+
 /** Keyboard matching configuration used by utility helpers. */
 export interface keysSettings {
   /** Disables key handling when true. */
@@ -127,7 +129,7 @@ export function getTermsForKey(combo: string, settings: keysSettings): { overrid
  * @returns Action id, pass-through key, or `false` when denied.
  */
 export function keyEventAllowed(e: KeyboardEvent, settings: keysSettings): false | string {
-  if (settings.disabled || ((e.key === " " || e.key === "Enter") && ((e.target as Node)?.ownerDocument || document).activeElement?.tagName === "BUTTON") || ((e.target as Node)?.ownerDocument || document).activeElement?.matches("input,textarea,[contenteditable='true']")) return false;
+  if (settings.disabled || ((e.key === " " || e.key === "Enter") && getActiveEl((e.target as Node)?.ownerDocument)?.matches("button,input,textarea,[contenteditable='true']"))) return false;
   const combo = stringifyKeyEvent(e),
     { override, block, action, whitelisted } = getTermsForKey(combo, settings);
   if (block) return false;
@@ -138,7 +140,7 @@ export function keyEventAllowed(e: KeyboardEvent, settings: keysSettings): false
 }
 
 /**
- * Formats one or many combos for human-readable UI labels.
+ * Formats one or many combos for human-readable UI labels, prepends " " for fluid appending.
  * @param combo Combo or combo list.
  * @returns Display label (for example: `" (ctrl+z) or (meta+z)"`).
  */

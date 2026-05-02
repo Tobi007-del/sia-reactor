@@ -15,12 +15,12 @@ type ReactiveMethodMap<T extends object, P extends ReactivePreferences | undefin
 
 /** Exposed `Reactor` methods and `__Reactor__` of a `reactive()` object. */
 export type APIKey<T extends object = any, P extends ReactivePreferences | undefined = undefined> = keyof ReactiveMethodMap<T, P> | "__Reactor__";
-/** `keyof` type with `Reactor` methods and `__Reactor__` property excluded, representing the runtime enumerable shape. */
-export type PureKeyof<T extends object, P extends ReactivePreferences | undefined = undefined> = Exclude<keyof T, APIKey<T, P>>;
 /** Type representing a `reactive()` object with mapped `Reactor` methods and `__Reactor__`. */
 export type Reactive<T extends object, P extends ReactivePreferences | undefined = undefined> = T & ReactiveMethodMap<T, P> & { __Reactor__: Reactor<T> };
 /** Object type with only the non-reactor props of a `reactive()` object, representing the runtime enumerable shape. */
-export type Pure<T extends object, P extends ReactivePreferences | undefined = undefined> = Pick<T, PureKeyof<T, P>>;
+export type Pure<T extends object, P extends ReactivePreferences | undefined = undefined> = {
+  [K in keyof T as K extends APIKey<T, P> ? never : K]: T[K];
+};
 export interface ReactivePreferences {
   /** Prefix applied to exposed `Reactor` methods. */
   prefix?: string;

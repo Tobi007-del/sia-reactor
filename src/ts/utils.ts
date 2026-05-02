@@ -8,4 +8,4 @@ export { onAllMethods, bindAllMethods, guardAllMethods, guardMethod } from "./ut
 
 export { type keysSettings, type KeyStruct, parseKeyCombo, stringifyKeyEvent, cleanKeyCombo, matchKeys, getTermsForKey, keyEventAllowed, formatKeyForDisplay, formatKeyShortcutsForDisplay, parseForARIAKS } from "./utils/keys";
 
-export { createEl, assignEl } from "./utils/dom";
+export { createEl, assignEl, getActiveEl } from "./utils/dom";

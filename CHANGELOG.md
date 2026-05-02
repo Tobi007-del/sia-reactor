@@ -1,5 +1,17 @@
 # sia-reactor
 
+## 0.0.32
+
+### Patch Changes
+
+- Added utilities for DOM active element and updated codebase to use it for better realms support
+
+## 0.0.31
+
+### Patch Changes
+
+- Cleanups and Code maintenance
+
 ## 0.0.30
 
 ### Patch Changes

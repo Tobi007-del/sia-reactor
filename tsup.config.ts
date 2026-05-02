@@ -1,5 +1,5 @@
 import { defineConfig } from "tsup";
-import fs from "fs";
+import { existsSync, mkdirSync, copyFileSync } from "node:fs";
 
 export default defineConfig([
   {
@@ -9,7 +9,7 @@ export default defineConfig([
     clean: true,
     async onSuccess() {
       const cssSource = "src/css/time-travel-overlay.css";
-      if (fs.existsSync(cssSource)) fs.mkdirSync("dist/styles", { recursive: true }), fs.copyFileSync(cssSource, "dist/styles/time-travel-overlay.css"), console.log("✅ CSS stylesheets copied!");
+      if (existsSync(cssSource)) mkdirSync("dist/styles", { recursive: true }), copyFileSync(cssSource, "dist/styles/time-travel-overlay.css"), console.log("✅ CSS stylesheets copied!");
     },
   },
   {

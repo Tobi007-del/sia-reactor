@@ -8,6 +8,6 @@ export { methods, reactive, inert, live, isInert, intent, state, isIntent, volat
 
 export type { Inert, Live, Intent, State, Volatile, Stable, Target, Payload, DirectPayload, UpdatePayload, REvent, Getter, Setter, Deleter, Watcher, Listener, GetterRecord, SetterRecord, DeleterRecord, WatcherRecord, ListenerRecord, SyncOptionsTuple, SyncOptions, ListenerOptionsTuple, ListenerOptions, EffectOptions, ReactorBuild } from "./types/reactor";
 
-export type { APIKey, PureKeyof, Reactive, Pure, ReactivePreferences } from "./core/mixins";
+export type { APIKey, Reactive, Pure, ReactivePreferences } from "./core/mixins";
 
 export type { Primitive, NoTraverse, Paths, WildPaths, ChildPaths, PathKey, StrictPathKey, PathValue, PathBranchValue, Unflatten, PathDepth, PathLeaf, PathBranch, UnionToIntersection, AddDepth, SubtractDepth, DeepKeys, DeepMerge, DeepPartial, DeepRequired, DeepReadonly, DepthConfig, MaxDepth, PrevDepth, NextDepth } from "./types/obj";
