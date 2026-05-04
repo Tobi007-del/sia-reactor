@@ -8,8 +8,11 @@ export default defineConfig([
     dts: true,
     clean: true,
     async onSuccess() {
-      const cssSource = "src/css/time-travel-overlay.css";
-      if (existsSync(cssSource)) mkdirSync("dist/styles", { recursive: true }), copyFileSync(cssSource, "dist/styles/time-travel-overlay.css"), console.log("✅ CSS stylesheets copied!");
+      const keys = ["time-travel-overlay"];
+      keys.forEach((key) => {
+        const source = `src/css/${key}.css`;
+        if (existsSync(source)) mkdirSync("dist/styles", { recursive: true }), copyFileSync(source, `dist/styles/${key}.css`), console.log(`✅ ${key} CSS stylesheet copied!`);
+      });
     },
   },
   {

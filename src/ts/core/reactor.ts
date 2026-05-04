@@ -452,9 +452,8 @@ export class Reactor<T extends object> {
     if (cord) return cord.clup;
     let task: () => void;
     cord = { cb, once, clup: () => (lazy && this.nostall(task), this[`no${key}` as "noget"](path, cb)) };
-    immediate && onImmediate(immediate);
     task = () => (cords ?? (store.set(path, (cords = [])), cords)).push(cord);
-    lazy ? this.stall(task) : task();
+    immediate && onImmediate(immediate), lazy ? this.stall(task) : task();
     return this.bindSignal(cord!, signal);
   }
   protected dropSync<P extends WildPaths<T>>(store: Map<WildPaths<T>, any[]> | undefined, path: P, cb: any): boolean | undefined {
@@ -556,7 +555,7 @@ export class Reactor<T extends object> {
    * const cleanup = rtr.watch("user.name", (value) => console.log(value));
    */
   public watch<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>, options?: SyncOptions): WatcherRecord<T>["clup"] {
-    return this.addSync("watch", path, callback, options, (imm) => imm !== "auto" && inAny(this.core, path) && ((target) => callback(target.value, { type: "init", target, currentTarget: target, root: this.core, rejectable: false } as Payload<T, P>))(this.getContext(path)));
+    return this.addSync("watch", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && ((target) => callback(target.value, { type: "init", target, currentTarget: target, root: this.core, rejectable: false } as Payload<T, P>))(this.getContext(path)));
   }
   /** Registers a watcher for a path that only triggers once. */
   public wonce<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>, options?: SyncOptions): WatcherRecord<T>["clup"] {
