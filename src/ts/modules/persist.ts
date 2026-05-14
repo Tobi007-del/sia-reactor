@@ -1,6 +1,6 @@
 import { BaseReactorModule, wpArr, type ReactorModulePathConfig, type ReactorModuleId } from "./base";
 import { StorageAdapter, LocalStorageAdapter, AsyncStorageAdapter, type StorageAdapterConstructor, type AsyncStorageAdapterConstructor } from "../utils/store";
-import { type FanoutTuple, fanoutOptsArr, setAny, getAny, fanout, mergeObjs, parseEvtOpts } from "../utils/obj";
+import { type FanoutTuple, fanoutOptsArr, setPath, getPath, fanout, mergeObjs, parseEvtOpts } from "../utils/obj";
 import { setTimeout } from "../utils/fn";
 import { Reactor } from "../core/reactor";
 import type { REvent, Inert } from "../types/reactor";
@@ -41,8 +41,8 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     for (const [rid, rtr] of this.rtrs) {
       const snap = this.config.useSnapshot ? (this.config.useSnapshot === true && (rtr.config.referenceTracking = rtr.config.smartCloning = true), rtr.snapshot()) : rtr.core,
         paths = this.getPaths(this.config.whitelist, rid),
-        val: any = this.config.whitelist ? paths.reduce((acc: any, p) => (setAny(acc, p, getAny(snap, p)), acc), {}) : snap;
-      this.rtrs.size > 1 ? setAny(res!, rid as any, val) : (res = val); // allows merging with path-like ids
+        val: any = this.config.whitelist ? paths.reduce((acc: any, p) => (setPath(acc, p, getPath(snap, p)), acc), {}) : snap;
+      this.rtrs.size > 1 ? setPath(res!, rid as any, val) : (res = val); // allows merging with path-like ids
     }
     return res;
   }
@@ -73,7 +73,7 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     if (this.adapter && value === this.adapter.constructor) return;
     this.state.hydrated = false;
     this.adapter?.remove(this.config.key); // Cleanup old adapter storage
-    this.adapter = "function" === typeof value ? new (value as StorageAdapterConstructor)({ debug: !!this.rtrs.values().next().value?.canLog }) : value; // dynamic, instance or not; pass am come :)
+    this.adapter = "function" === typeof value ? new (value as StorageAdapterConstructor)({ debug: !!this.rtrs.values().next().value?.canLog }) : ((value.config.debug = !!this.rtrs.values().next().value?.canLog), value); // dynamic, instance or not; pass am come :)
     try {
       let saved = this.adapter.get(this.config.key);
       const isAsync = saved instanceof Promise, // accuracy incase overriden methods are async
@@ -82,13 +82,13 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
       if (seq !== this.hydrateSeq || !saved) return;
       for (const [rid, rtr] of this.rtrs) {
         const paths = this.getPaths(this.config.whitelist, rid),
-          entry = this.rtrs.size > 1 ? getAny(saved, rid as any) : saved; // allows retrieving with path-like ids
+          entry = this.rtrs.size > 1 ? getPath(saved, rid as any) : saved; // allows retrieving with path-like ids
         if (!entry) continue;
-        const set = (p: any, news: any, olds: any) => (depth ? (fanout as any) : setAny)(rtr.core, p, merge ? mergeObjs(news, olds) : olds, depth ? { depth, crossRealms: rtr.config.crossRealms } : undefined), // if sync, merge directly, else fanout with options for granularity
+        const set = (p: any, news: any, olds: any) => (depth ? (fanout as any) : setPath)(rtr.core, p, merge ? mergeObjs(news, olds) : olds, depth ? { depth, crossRealms: rtr.config.crossRealms } : undefined), // if sync, merge directly, else fanout with options for granularity
           setPaths = this.config.whitelist ? paths : wpArr;
         for (let i = 0, len = setPaths.length; i < len; i++) {
           const path = setPaths[i];
-          set(path, getAny(rtr.core, path), getAny(entry, path));
+          set(path, getPath(rtr.core, path), getPath(entry, path));
         }
       }
       for (const [rid, rtr] of this.rtrs) rtr.tick(depth ? "*" : this.config.whitelist ? this.getPaths(this.config.whitelist, rid) : "*"); // if sync, tick written paths b4 init, else if known or all

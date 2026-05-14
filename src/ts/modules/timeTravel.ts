@@ -1,7 +1,7 @@
 import { BaseReactorModule, ReactorModuleId, type ReactorModulePathConfig } from "./base";
 import { Reactor } from "../core/reactor";
 import type { REvent } from "../types/reactor";
-import { setAny, deleteAny, fanout, deepClone } from "../utils/obj";
+import { setPath, deletePath, fanout, deepClone } from "../utils/obj";
 import { setTimeout } from "../utils/fn";
 import { clamp } from "../utils/num";
 import type { Paths, PathValue } from "../types/obj";
@@ -111,8 +111,8 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
       const e = this.state.history[forward ? this.state.currentFrame : this.state.currentFrame - 1]; // Grab the correct frame (Current unapplied frame if going forward, previous applied frame if going backward)
       if (!e) break;
       const rtr = this.rtrs.get(e.rid) || this.rtrs.values().next().value!; // owner of the entry index for (single||multi)-reactor management
-      if (forward) e.type === "delete" ? deleteAny(rtr.core, e.path as any) : setAny(rtr.core, e.path as any, deepClone(e.value, rtr.config));
-      else e.hadKey === false ? deleteAny(rtr.core, e.path as any) : setAny(rtr.core, e.path as any, deepClone(e.oldValue, rtr.config));
+      if (forward) e.type === "delete" ? deletePath(rtr.core, e.path as any) : setPath(rtr.core, e.path as any, deepClone(e.value, rtr.config));
+      else e.hadKey === false ? deletePath(rtr.core, e.path as any) : setPath(rtr.core, e.path as any, deepClone(e.oldValue, rtr.config));
       forward ? this.state.currentFrame++ : this.state.currentFrame--; // 3. Move the playhead
       if (e.rejected) rtr.log(`[Reactor ${this.name} Module] ${forward ? "Replaying" : "Reversing"} REJECTED intent at "${e.path}"`);
     }
@@ -125,9 +125,13 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     this.pause(), forward ? this.jumpTo(this.state.currentFrame + stride) : this.jumpTo(this.state.currentFrame - stride);
   }
   /** Step back in time, Moves the playhead backward and teleports the state. */
-  public undo = () => this.step(1, false);
+  public undo() {
+    this.step(1, false);
+  }
   /** Step forward in time, Restores previously undone actions. */
-  public redo = () => this.step(1, true);
+  public redo() {
+    this.step(1, true);
+  }
 
   // ===========================================================================
   // THE VCR (Automated Playback)
@@ -159,7 +163,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   }
   /** Imports a session from a JSON string, allowing you to replay or analyze past states. */
   public import(json: string, reviver?: JSONReviver) {
-    setAny(this.state, "*", JSON.parse(json, reviver) as TimeTravelState<T, P>);
+    setPath(this.state, "*", JSON.parse(json, reviver) as TimeTravelState<T, P>);
     this.lastTimestamp = performance.now();
     const resume = !this.state.paused,
       target = this.state.currentFrame;

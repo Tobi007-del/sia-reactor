@@ -83,7 +83,7 @@ export class Reactor {
   noset = (path, callback) => this.setters.get(path)?.delete(callback);
   on = (path, callback) => (this.listeners.get(path) ?? this.listeners.set(path, new Set()).get(path)).add(callback);
   off = (path, callback) => this.listeners.get(path)?.delete(callback);
-  propagate = ({ type, target: { path: path, value: sets } }) => (type === "set" || type === "delete") && sets && Object.entries(sets).forEach(([k, v]) => tmg.assignAny(this.root, `${path}.${k}`, v));
+  propagate = ({ type, target: { path: path, value: sets } }) => (type === "set" || type === "delete") && sets && Object.entries(sets).forEach(([k, v]) => tmg.setPath(this.root, `${path}.${k}`, v));
   tick = this._flush;
   reset = () => (this.getters.clear(), this.setters.clear(), this.listeners.clear(), this.batch.clear(), (this.isBatching = false), (this.proxyCache = new WeakMap()), true);
   destroy = () => (this.reset(), (this.getters = this.setters = this.listeners = this.batch = this.proxyCache = null));
@@ -120,7 +120,7 @@ export function reactify(target, root) {
 //     }
 //   // 3. Surgical Application
 //   const affected: string[] = [];
-//   map.forEach((entry, path) => (entry[1] === "delete" ? deleteAny(this.rtr.core, path as any) : setAny(this.rtr.core, path as any, deepClone(entry[0], this.rtr.config)), affected.push(path))); // clone to avoid rewriting history due to shallow copying
+//   map.forEach((entry, path) => (entry[1] === "delete" ? deletePath(this.rtr.core, path as any) : setPath(this.rtr.core, path as any, deepClone(entry[0], this.rtr.config)), affected.push(path))); // clone to avoid rewriting history due to shallow copying
 //   // 4. Batch Flush: Flush ALL teleportation ripples before we drop the shield!
 //   this.rtr.tick();
 //   this.isPlaying = false;

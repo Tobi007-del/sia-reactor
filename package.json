@@ -1,7 +1,7 @@
 {
   "name": "sia-reactor",
-  "version": "0.0.33",
-  "description": "The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) Engine with zero-allocation loops, event propagation, and structural sharing.",
+  "version": "0.0.34",
+  "description": "The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) engine that gives data transactional mutation routing and multi-phase state observation.",
   "author": "Oketade Oluwatobiloba <tobioketade007@gmail.com>",
   "license": "MIT",
   "repository": {
@@ -56,7 +56,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
+    "build": "tsup",
     "test": "vitest --reporter=verbose",
     "test:run": "vitest run  --reporter=verbose",
     "demo": "vite --config demo/vite.config.ts",

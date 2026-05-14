@@ -30,11 +30,10 @@ export function canHandle(obj: any, config: { crossRealms?: boolean; preserveCon
  * Gets a value by path.
  * @example
  * const state = { user: { profile: { name: "Kosi" } } };
- * const name = getAny(state, "user.profile.name");
+ * const name = getPath(state, "user.profile.name");
  */
-export function getAny<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(source: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): PathValue<T, P, S> {
+export function getPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(source: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): PathValue<T, P, S> {
   if (key === "*") return source as any;
-  if (!key.includes(separator)) return (source as any)[keyFunc ? keyFunc(key) : key];
   const keys = key.split(separator);
   let currObj: any = source;
   for (let i = 0, len = keys.length; i < len; i++) {
@@ -56,14 +55,13 @@ export function getAny<T extends object, const S extends string = ".", P extends
  * Sets a value by path.
  * @example
  * const state = { user: { profile: { name: "Kosi" } } };
- * setAny(state, "user.profile.name", "Grace");
+ * setPath(state, "user.profile.name", "Grace");
  * @example
  * const state = { users: [] as Array<{ name?: string }> };
- * setAny(state, "users[0].name" as any, "Kosi");
+ * setPath(state, "users[0].name" as any, "Kosi");
  */
-export function setAny<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, value: PathValue<T, P, S>, separator: S = "." as S, keyFunc?: (p: string) => string): void {
+export function setPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, value: PathValue<T, P, S>, separator: S = "." as S, keyFunc?: (p: string) => string): void {
   if (key === "*") return Object.assign(target, value);
-  if (!key.includes(separator)) return void ((target as any)[keyFunc ? keyFunc(key) : key] = value);
   const keys = key.split(separator);
   for (let currObj: any = target, i = 0, len = keys.length; i < len; i++) {
     const key = keyFunc ? keyFunc(keys[i]) : keys[i],
@@ -84,15 +82,14 @@ export function setAny<T extends object, const S extends string = ".", P extends
  * Deletes a value by path.
  * @example
  * const state = { user: { profile: { name: "Kosi" } } };
- * deleteAny(state, "user.profile.name");
+ * deletePath(state, "user.profile.name");
  */
-export function deleteAny<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): void {
+export function deletePath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): void {
   if (key === "*") {
     const keys = Object.keys(target);
     for (let i = 0, len = keys.length; i < len; i++) delete (target as any)[keys[i]];
     return;
   }
-  if (!key.includes(separator)) return void delete (target as any)[keyFunc ? keyFunc(key) : key];
   const keys = key.split(separator);
   for (let currObj: any = target, i = 0, len = keys.length; i < len; i++) {
     const key = keyFunc ? keyFunc(keys[i]) : keys[i],
@@ -114,11 +111,10 @@ export function deleteAny<T extends object, const S extends string = ".", P exte
  * Checks whether a path exists.
  * @example
  * const state = { user: { profile: { name: "Kosi" } } };
- * const ok = inAny(state, "user.profile.name"); // default loose typing due to it's usecase
+ * const ok = hasPath(state, "user.profile.name"); // default loose typing due to it's usecase
  */
-export function inAny<T extends object, const S extends string = ".", P extends string = string>(source: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): boolean {
+export function hasPath<T extends object, const S extends string = ".", P extends string = string>(source: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): boolean {
   if (key === "*") return true;
-  if (!key.includes(separator)) return key in source;
   const keys = key.split(separator);
   for (let currObj: any = source, i = 0, len = keys.length; i < len; i++) {
     const key = keyFunc ? keyFunc(keys[i]) : keys[i],
@@ -141,9 +137,9 @@ export function inAny<T extends object, const S extends string = ".", P extends 
  * Converts flattened keys into nested object structure.
  * @example
  * const flat = { "user.name": "Kosi", "user.role": "admin" };
- * const obj = parseAnyObj(flat);
+ * const obj = parsePathObj(flat);
  */
-export function parseAnyObj<T extends Record<string, any>, const S extends string = ".">(obj: T, separator: S = "." as S, keyFunc = (p: string) => p, seen = new WeakSet()): Unflatten<T, S> {
+export function parsePathObj<T extends Record<string, any>, const S extends string = ".">(obj: T, separator: S = "." as S, keyFunc = (p: string) => p, seen = new WeakSet()): Unflatten<T, S> {
   if (!isObj(obj) || seen.has(obj)) return obj as Unflatten<T, S>; // no circular references
   seen.add(obj);
   const result: any = {},
@@ -151,7 +147,7 @@ export function parseAnyObj<T extends Record<string, any>, const S extends strin
   for (let i = 0, len = keys.length; i < len; i++) {
     const key: any = keys[i],
       val: any = obj[key];
-    key === "*" || key.includes(separator) ? setAny(result, key, parseAnyObj(val, separator, keyFunc, seen), separator, keyFunc) : (result[key] = isObj(val) ? parseAnyObj(val, separator, keyFunc, seen) : val);
+    key === "*" || key.includes(separator) ? setPath(result, key, parsePathObj(val, separator, keyFunc, seen), separator, keyFunc) : (result[key] = isObj(val) ? parsePathObj(val, separator, keyFunc, seen) : val);
   }
   return result as Unflatten<T, S>;
 }
@@ -190,8 +186,8 @@ export function fanout<T extends object, P extends WildPaths<T> = WildPaths<T>>(
 export function fanout(a: any, b?: any, c?: any, d?: any): void {
   const isEvPd = !!a?.target,
     isPath = !isEvPd && "string" === typeof b,
-    [state, path, olds, news, opts, type] = isEvPd ? [a.root, a.currentTarget.path, a.currentTarget.oldValue, a.currentTarget.value, b || NIL, a.type] : isPath ? [a, b, getAny(a, b), c, d || NIL, undefined] : [undefined, undefined, a, b, c || NIL, undefined],
-    target = isEvPd ? getAny(a.root, a.currentTarget.path) : isPath ? getAny(state, path) : olds; // to avoid stale refs during write-walk
+    [state, path, olds, news, opts, type] = isEvPd ? [a.root, a.currentTarget.path, a.currentTarget.oldValue, a.currentTarget.value, b || NIL, a.type] : isPath ? [a, b, getPath(a, b), c, d || NIL, undefined] : [undefined, undefined, a, b, c || NIL, undefined],
+    target = isEvPd ? getPath(a.root, a.currentTarget.path) : isPath ? getPath(state, path) : olds; // to avoid stale refs during write-walk
   if ((isEvPd && type !== "set" && type !== "delete") || !target || !canHandle(news, opts)) return;
   const prev = CTX.isCascading;
   CTX.isCascading = isEvPd; // if event or payload, already written values can bypass equality checks
@@ -208,7 +204,7 @@ export function fanout(a: any, b?: any, c?: any, d?: any): void {
         } // call a spade a spade and just skip, no descriptor gymanstics
       }
     };
-    if ((opts.atomic ?? true) && Array.isArray(news) && isPath) setAny(state, path, news), (getAny(state, path).length = news.length); // ping commoners
+    if ((opts.atomic ?? true) && Array.isArray(news) && isPath) setPath(state, path, news), (getPath(state, path).length = news.length); // ping commoners
     else walk(target, opts.merge ? mergeObjs(olds, news, opts) : news, opts.depth === true ? Infinity : opts.depth);
   } finally {
     CTX.isCascading = prev;

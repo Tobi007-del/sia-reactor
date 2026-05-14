@@ -108,7 +108,7 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
   public resolve(message?: string): void {
     if (!this.rejectable) return this.reactor.log(`[ReactorEvent] Ignored \`resolve()\` call on a non-rejectable ${this.staticType} at "${this.path}"`);
     if (this.eventPhase !== ReactorEvent.CAPTURING_PHASE) this.reactor.log(`[ReactorEvent] Resolving an intent on ${this.staticType} at "${this.path}" outside of the capture phase is unadvised.`);
-    if (this.rejectable) this.reactor.log(`[ReactorEvent] ${(this._resolved = message || `Could ${this.staticType} intended value at "${this.path}"`)}`);
+    if (this.rejectable) this.reactor.log(`[ReactorEvent] ${(this._resolved = message || `${this.staticType} intent resolved at "${this.path}"`)}`);
   }
   /** Rejection reason for rejectable events. */
   public get rejected(): string {
@@ -123,7 +123,7 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
   public reject(reason?: string): void {
     if (!this.rejectable) return this.reactor.log(`[ReactorEvent] Ignored \`reject()\` call on a non-rejectable ${this.staticType} at "${this.path}"`);
     if (this.eventPhase !== ReactorEvent.CAPTURING_PHASE) this.reactor.log(`[ReactorEvent] Rejecting an intent on ${this.staticType} at "${this.path}" outside of the capture phase is unadvised.`);
-    if (this.rejectable) this.reactor.log(`[ReactorEvent] ${(this._rejected = reason || `Couldn't ${this.staticType} intended value at "${this.path}"`)}`);
+    if (this.rejectable) this.reactor.log(`[ReactorEvent] ${(this._rejected = reason || `${this.staticType} intent rejected at "${this.path}"`)}`);
   }
 
   /**

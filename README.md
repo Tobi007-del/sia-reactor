@@ -50,8 +50,9 @@ const player = reactive({
 
 // Logic layer (capture phase)
 player.on("intent.playing", (e) => {
-  if (!ready) return e.reject();
+  if (!ready) return e.reject(); // warning optimistic UI
   player.state.playing = true;
+  e.resolve(); // claimed and handled
 }, { capture: true });
 
 // UI layer
@@ -92,7 +93,7 @@ pnpm add sia-reactor
 import { reactive, Reactor, TERMINATOR } from "sia-reactor";
 
 // 2. Deep Object Utilities
-import { setAny, getAny, mergeObjs } from "sia-reactor/utils";
+import { setPath, getPath, mergeObjs } from "sia-reactor/utils";
 ```
 
 ---
@@ -103,7 +104,7 @@ import { setAny, getAny, mergeObjs } from "sia-reactor/utils";
 
 ```javascript
 import { reactive, Reactor } from "sia-reactor";
-import "sia-reactor/utils"; // deep object helpers (setAny/getAny/deleteAny/inAny/parseAnyObj/fanout/mergeObjs/deepClone/nuke...) take note of `fanout`!
+import "sia-reactor/utils"; // deep object helpers (setPath/getPath/deletePath/hasPath/parsePathObj/fanout/mergeObjs/deepClone/nuke...) take note of `fanout`!
 import "sia-reactor/modules"; // built-in modules + storage adapters
 import "sia-reactor/adapters/vanilla"; // Autotracker + effect API + TimeTravelOverlay class
 import "sia-reactor/adapters/react"; // useReactor/useSelector/usePath hooks
@@ -269,7 +270,7 @@ const time = new TimeTravelModule({ maxHistory: 300, loop: false, rate: 150, whi
 store.use(time);
 
 // If persist uses an async adapter (e.g. IndexedDB), wait till after hydration:
-persist.state.once("hydrated", () => store.use(time)); // starts `false`, one-time stall until it flips
+persist.state.once("hydrated", () => store.use(time)); // starts `false`, one-time stall until it flips. i.e, also escapes custom initialization
 effect(() => persist.state.hydrated && store.use(time), { once: true }) // same logic, different look :)
 
 const overlay = new TimeTravelOverlay(time, { color: "#e26e02", startOpen: false, devOnly: true, container: document.body }); // optional debug interface for visulazation

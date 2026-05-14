@@ -1,4 +1,4 @@
-export { arrRegex, isObj, isPOJO, canHandle, setAny, getAny, deleteAny, inAny, parseAnyObj, parseEvtOpts, type FanoutTuple, fanout, fanoutOptsArr, mergeObjs, getTrailRecords, deepClone, nuke } from "./utils/obj";
+export { arrRegex, isObj, isPOJO, canHandle, setPath, getPath, deletePath, hasPath, parsePathObj, parseEvtOpts, type FanoutTuple, fanout, fanoutOptsArr, mergeObjs, getTrailRecords, deepClone, nuke } from "./utils/obj";
 
 export { clamp } from "./utils/num";
 

@@ -190,8 +190,8 @@ export interface SyncOptionsTuple {
   once?: boolean;
   /** Optional `AbortSignal` to automatically handle registration cleanup. */
   signal?: AbortSignal;
-  /** Whether to run the callback immediately during registration, "auto" runs only if path exists. */
-  immediate?: boolean | "auto";
+  /** Whether to run the callback immediately during registration, "auto" runs only if path exists, "strict" avoids bypassing the resolution system by triggering a `set` instead of just the callback for `.on()` or `.watch()`. */
+  immediate?: boolean | "auto" | "strict";
 }
 /** Tuple-form and shorthand boolean for mediator/watch registrations. */
 export type SyncOptions = boolean | SyncOptionsTuple;

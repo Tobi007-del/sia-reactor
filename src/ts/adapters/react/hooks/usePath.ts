@@ -4,7 +4,7 @@ import { Reactor } from "../../../core/reactor";
 import { type Reactive, getReactor } from "../../../core/mixins";
 import type { EffectOptions, ReactorBuild } from "../../../types/reactor";
 import type { WildPaths, PathValue } from "../../../types/obj";
-import { getAny } from "../../../utils/obj";
+import { getPath } from "../../../utils/obj";
 
 /**
  * Subscribes to a single path in Reactor state.
@@ -37,5 +37,5 @@ export function usePath<T extends object, P extends WildPaths<T>>(target: T | Re
   const subscribe = useCallback((notify: () => void) => rtr[(optsRef.current.sync ? "watch" : "on") as "on"](path, () => (versionRef.current++, notify()), optsRef.current), [rtr, path]);
   const getSnapshot = useCallback(() => versionRef.current, []);
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot); // Feed React a primitive number to track tearing, zero cloning.
-  return getAny(rtr.core, path);
+  return getPath(rtr.core, path);
 }

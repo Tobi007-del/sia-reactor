@@ -2,7 +2,7 @@ import { CTX, RAW, INERTIA, REJECTABLE, INDIFFABLE, TERMINATOR, VERSION, SSVERSI
 import { ReactorEvent } from "./event";
 import type { REvent, Target, Payload, Getter, Setter, Deleter, Watcher, Listener, ListenerOptions, ListenerRecord, WatcherRecord, GetterRecord, SetterRecord, DeleterRecord, SyncOptions, ReactorBuild } from "../types/reactor";
 import type { PathBranchValue, Paths, PathKey, PathValue, WildPaths, MaxDepth } from "../types/obj";
-import { canHandle, getTrailRecords, parseEvtOpts, inAny, getAny, setAny, deleteAny, nuke } from "../utils/obj";
+import { canHandle, getTrailRecords, parseEvtOpts, hasPath, getPath, setPath, deletePath, nuke } from "../utils/obj";
 import { BaseReactorModule as ReactorModule, ReactorModuleId } from "../modules/base";
 
 /*
@@ -404,8 +404,8 @@ export class Reactor<T extends object> {
   }
   public getContext<P extends WildPaths<T>>(path: P): Target<T, P> {
     const last = path.lastIndexOf("."),
-      value = getAny(this.core, path),
-      object = last === -1 ? this.core : getAny(this.core, path.slice(0, last) as Paths<T>);
+      value = getPath(this.core, path),
+      object = last === -1 ? this.core : getPath(this.core, path.slice(0, last) as Paths<T>);
     return { path: path as P, value, key: (path.slice(last + 1) || "") as PathKey<T, P>, hadKey: true, object: object as PathBranchValue<T, P> };
   }
   protected bindSignal<Cb>(cord: GetterRecord<T> | SetterRecord<T> | DeleterRecord<T> | WatcherRecord<T> | ListenerRecord<T>, sig?: AbortSignal): Cb {
@@ -436,7 +436,7 @@ export class Reactor<T extends object> {
     return clone;
   }
 
-  protected addSync<P extends WildPaths<T>>(key: "get" | "set" | "delete" | "watch", path: P, cb: any, opts: SyncOptions | undefined, onImmediate: (immediate: boolean | "auto") => void = NOOP): () => boolean | undefined {
+  protected addSync<P extends WildPaths<T>>(key: "get" | "set" | "delete" | "watch", path: P, cb: any, opts: SyncOptions | undefined, onImmediate: (immediate: boolean | "auto" | "strict") => void = NOOP): () => boolean | undefined {
     const { lazy = false, once = false, signal, immediate = false } = parseEvtOpts(opts, EVT_OPTS.MEDIATOR),
       store = (this[`${key}${key.endsWith("t") ? "t" : ""}ers` as "getters"] ??= new Map()) as Map<WildPaths<T>, Array<GetterRecord<T> | SetterRecord<T> | DeleterRecord<T> | WatcherRecord<T>>>;
     let cords = store.get(path),
@@ -476,7 +476,7 @@ export class Reactor<T extends object> {
    * const cleanup = rtr.get("user.name", (value) => String(value).trim());
    */
   public get<P extends WildPaths<T>>(path: P, callback: Getter<T, P>, options?: SyncOptions): GetterRecord<T>["clup"] {
-    return this.addSync("get", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && getAny(this.core, path)); // a progressive enhancment for gets that are virtual and should not affect init
+    return this.addSync("get", path, callback, options, (imm) => (imm !== "auto" || hasPath(this.core, path)) && getPath(this.core, path)); // a progressive enhancment for gets that are virtual and should not affect init
   }
   /** Registers a get mediator for a path that only triggers once. */
   public gonce<P extends WildPaths<T>>(path: P, callback: Getter<T, P>, options?: SyncOptions): GetterRecord<T>["clup"] {
@@ -502,7 +502,7 @@ export class Reactor<T extends object> {
    * rtr.set("user.name", (value) => String(value).trim());
    */
   public set<P extends WildPaths<T>>(path: P, callback: Setter<T, P>, options?: SyncOptions): SetterRecord<T>["clup"] {
-    return this.addSync("set", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && setAny(this.core, path, getAny(this.core, path)!));
+    return this.addSync("set", path, callback, options, (imm) => (imm !== "auto" || hasPath(this.core, path)) && setPath(this.core, path, getPath(this.core, path)!));
   }
   /** Registers a set mediator for a path that only triggers once. */
   public sonce<P extends WildPaths<T>>(path: P, callback: Setter<T, P>, options?: SyncOptions): SetterRecord<T>["clup"] {
@@ -528,7 +528,7 @@ export class Reactor<T extends object> {
    * rtr.delete("cache.temp", () => TERMINATOR);
    */
   public delete<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>, options?: SyncOptions): DeleterRecord<T>["clup"] {
-    return this.addSync("delete", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && deleteAny(this.core, path));
+    return this.addSync("delete", path, callback, options, (imm) => (imm !== "auto" || hasPath(this.core, path)) && deletePath(this.core, path));
   }
   /** Registers a delete mediator for a path that only triggers once. */
   public donce<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>, options?: SyncOptions): DeleterRecord<T>["clup"] {
@@ -555,7 +555,7 @@ export class Reactor<T extends object> {
    * const cleanup = rtr.watch("user.name", (value) => console.log(value));
    */
   public watch<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>, options?: SyncOptions): WatcherRecord<T>["clup"] {
-    return this.addSync("watch", path, callback, options, (imm) => (imm !== "auto" || inAny(this.core, path)) && ((target) => callback(target.value, { type: "init", target, currentTarget: target, root: this.core, rejectable: false } as Payload<T, P>))(this.getContext(path)));
+    return this.addSync("watch", path, callback, options, (imm) => (imm !== "auto" || hasPath(this.core, path)) && (imm === "strict" ? setPath(this.core, path, getPath(this.core, path)) : ((target) => callback(target.value, { type: "init", target, currentTarget: target, root: this.core, rejectable: false } as Payload<T, P>))(this.getContext(path))));
   }
   /** Registers a watcher for a path that only triggers once. */
   public wonce<P extends WildPaths<T>>(path: P, callback: Watcher<T, P>, options?: SyncOptions): WatcherRecord<T>["clup"] {
@@ -596,10 +596,12 @@ export class Reactor<T extends object> {
       }
     if (cord) return cord.clup;
     cord = { cb: callback as Listener<T>, capture, depth: depth as MaxDepth, once, clup: () => this.off<P, D>(path, callback, options), lDepth: depth !== undefined ? this.getDepth(path) : depth };
-    if (immediate && (immediate !== "auto" || inAny(this.core, path))) {
-      const target = this.getContext(path) as Target<T, P>;
-      callback(new ReactorEvent<T, P>({ type: "init", target, currentTarget: target, root: this.core, rejectable: false }, this) as REvent<T, P, D>);
-    }
+    if (immediate && (immediate !== "auto" || hasPath(this.core, path)))
+      if (immediate === "strict") setPath(this.core, path, getPath(this.core, path));
+      else {
+        const target = this.getContext(path) as Target<T, P>;
+        callback(new ReactorEvent<T, P>({ type: "init", target, currentTarget: target, root: this.core, rejectable: false }, this) as REvent<T, P, D>);
+      }
     (cords ?? (this.listeners.set(path, (cords = [])), cords)).push(cord!);
     return this.bindSignal(cord!, signal);
   }

@@ -291,3 +291,12 @@ state.on(
   },
   { depth: 1 }
 ); // Manual depth inference typecheck
+
+// layered reactivity with optional semantic execution tiers
+// Breakdown:
+// Tier 0: basic object proxy (simple pub/sub)
+// Tier 1: path-based observation (on/watch)
+// Tier 2: mediated writes (set/get/delete interceptors)
+// Tier 3: intent/state separation (transactional layer)
+// Tier 4: propagation system (event wave model)
+// Tier 5: modules (persistence, time travel, etc.)
