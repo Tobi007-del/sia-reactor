@@ -1,6 +1,6 @@
 import { RAW, INERTIA, REJECTABLE, INDIFFABLE, VERSION, SSVERSION, NIL } from "./consts";
 import { Reactor } from "./reactor";
-import type { ReactorBuild, Inert, Intent, Live, State, Volatile, Stable } from "../types/reactor";
+import type { ReactorBuild, Inert, Intent, Live, State, Volatile, Stable } from "@defs/reactor";
 
 /** `Reactor` method names exposed on objects returned by `reactive()`. */
 export const methods = ["tick", "stall", "nostall", "get", "gonce", "noget", "set", "sonce", "noset", "delete", "donce", "nodelete", "watch", "wonce", "nowatch", "on", "once", "off", "snapshot", "use", "reset", "destroy"] as const;
@@ -44,7 +44,7 @@ export interface ReactivePreferences {
  * const rtr = new Reactor({ count: 0 });
  * const state = reactive(rtr);
  */
-export function reactive<T extends object, const P extends ReactivePreferences | undefined = undefined>(target: T, build?: ReactorBuild<T>, preferences: P = NIL): T extends Reactive<infer O, infer P> ? T : Reactive<T, P> {
+export function reactive<T extends object, const P extends ReactivePreferences | undefined = undefined>(target: T, build?: ReactorBuild<T>, preferences: P = NIL): T extends Reactive<infer _O, infer _P> ? T : Reactive<T, P> {
   if ("__Reactor__" in target) return target as any;
   const descriptors: PropertyDescriptorMap = {},
     rtr = getReactor(target, true, build),

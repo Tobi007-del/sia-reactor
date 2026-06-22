@@ -1,10 +1,10 @@
 import { useRef, useSyncExternalStore, useCallback } from "react";
-import { NIL } from "../../../core/consts";
-import { Reactor } from "../../../core/reactor";
-import { type Reactive, getReactor } from "../../../core/mixins";
-import type { EffectOptions, ReactorBuild } from "../../../types/reactor";
-import type { WildPaths, PathValue } from "../../../types/obj";
-import { getPath } from "../../../utils/obj";
+import { NIL } from "@core/consts";
+import { Reactor } from "@core/reactor";
+import { type Reactive, getReactor } from "@core/mixins";
+import type { EffectOptions, ReactorBuild } from "@defs/reactor";
+import type { WildPaths, PathValue } from "@defs/obj";
+import { getPath } from "@utils/obj";
 
 /**
  * Subscribes to a single path in Reactor state.

@@ -1,5 +1,5 @@
-import { NIL } from "../../super";
-import type { EffectOptions } from "../../types/reactor";
+import { NIL } from "@core/consts";
+import type { EffectOptions } from "@defs/reactor";
 import { Autotracker, withTracker } from "../autotracker";
 
 /**

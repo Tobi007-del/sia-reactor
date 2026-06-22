@@ -8,7 +8,7 @@ export default defineConfig([
     dts: true,
     clean: true,
     async onSuccess() {
-      const keys = ["time-travel-overlay"];
+      const keys = ["time-travel-console"];
       keys.forEach((key) => {
         const source = `src/css/${key}.css`;
         if (existsSync(source)) mkdirSync("dist/styles", { recursive: true }), copyFileSync(source, `dist/styles/${key}.css`), console.log(`✅ ${key} CSS stylesheet copied!`);

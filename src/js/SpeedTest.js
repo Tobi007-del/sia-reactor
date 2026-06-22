@@ -9,7 +9,7 @@ window.createSIAProxy ??= createSIAProxy;
 window.createVueProxy ??= createVueProxy;
 window.createMobxProxy ??= createMobxProxy;
 window.createValtioProxy ??= createValtioProxy;
-window.createLegendProxy ??= createLegendProxy;
+// window.createLegendProxy ??= createLegendProxy;
 
 // ==========================================
 // PROFESSIONAL BENCHMARK SUITE
@@ -48,7 +48,7 @@ window.runBenchmark = async function runBenchmark() {
   window.vueState = createVueProxy({ val: 0 });
   window.mobxState = createMobxProxy({ val: 0 });
   window.valtioState = createValtioProxy({ val: 0 });
-  window.legendState = createLegendProxy({ val: 0 });
+  // window.legendState = createLegendProxy({ val: 0 });
 
   log(`🔥 Warming up JIT compiler to stabilize execution environments...`);
   for (let i = 0; i < TEST_WARMUP_ITERATIONS; i++) {

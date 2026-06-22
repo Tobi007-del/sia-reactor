@@ -1,10 +1,10 @@
 import { getActiveEl } from "./dom";
 
 /** Keyboard matching configuration used by utility helpers. */
-export interface keysSettings {
+export interface KeysSettings {
   /** Disables key handling when true. */
   disabled?: boolean;
-  /** Combos that should call preventDefault when matched. */
+  /** Combos that should call `preventDefault` when matched. */
   overrides?: string[];
   /** Action map from action id to combo or combo list. */
   shortcuts?: Record<string, string | string[]>;
@@ -18,6 +18,13 @@ export interface keysSettings {
 
 /** Canonical key-combo structure used by parser and serializer helpers. */
 export type KeyStruct = Record<"ctrlKey" | "shiftKey" | "altKey" | "metaKey", boolean> & { key: string };
+
+/**
+ * Global registry of native browser hotkeys and shortcut combinations, pass as `.blocks` in `Settings` config for `keyEventAllowed()` for better UX.
+ * Used by the system to prevent default browser behaviors (e.g., zooming, tab switching, refreshing, or opening dev tools) inside the listener context.
+ */
+// prettier-ignore
+export const KEYS_BLOCKS = ["Ctrl+Tab", "Ctrl+Shift+Tab", "Ctrl+PageUp", "Ctrl+PageDown", "Cmd+Option+ArrowRight", "Cmd+Option+ArrowLeft", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6", "Ctrl+7", "Ctrl+8", "Ctrl+9", "Cmd+1", "Cmd+2", "Cmd+3", "Cmd+4", "Cmd+5", "Cmd+6", "Cmd+7", "Cmd+8", "Cmd+9", "Alt+ArrowLeft", "Alt+ArrowRight", "Cmd+ArrowLeft", "Cmd+ArrowRight", "Ctrl+r", "Ctrl+Shift+r", "F5", "Shift+F5", "Cmd+r", "Cmd+Shift+r", "Ctrl+h", "Ctrl+j", "Ctrl+d", "Ctrl+f", "Cmd+y", "Cmd+Option+b", "Cmd+d", "Cmd+f", "Ctrl+Shift+i", "Ctrl+Shift+j", "Ctrl+Shift+c", "Ctrl+u", "F12", "Cmd+Option+i", "Cmd+Option+j", "Cmd+Option+c", "Cmd+Option+u", "Ctrl+=", "Ctrl+-", "Ctrl+0", "Cmd+=", "Cmd+-", "Cmd+0", "Ctrl+p", "Ctrl+s", "Ctrl+o", "Cmd+p", "Cmd+s", "Cmd+o"];
 
 /**
  * Parses a combo string into modifier flags + terminal key.
@@ -105,7 +112,7 @@ export function matchKeys(required: string | string[], actual: string, strict = 
  * @param settings Matching settings.
  * @returns Match resolution record.
  */
-export function getTermsForKey(combo: string, settings: keysSettings): { override: boolean; block: boolean; whitelisted: boolean; action: string | null } {
+export function getTermsForKey(combo: string, settings: KeysSettings): { override: boolean; block: boolean; whitelisted: boolean; action: string | null } {
   const terms = { override: false, block: false, whitelisted: false, action: null as string | null },
     { overrides = [], shortcuts = {}, blocks = [], strictMatches: s = false, whitelist = [] } = settings || {};
   combo = cleanKeyCombo(combo);
@@ -128,14 +135,17 @@ export function getTermsForKey(combo: string, settings: keysSettings): { overrid
  * @param settings Matching settings.
  * @returns Action id, pass-through key, or `false` when denied.
  */
-export function keyEventAllowed(e: KeyboardEvent, settings: keysSettings): false | string {
-  if (settings.disabled || ((e.key === " " || e.key === "Enter") && getActiveEl((e.target as Node)?.ownerDocument)?.matches("button,input,textarea,[contenteditable='true']"))) return false;
+export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, settings: S): false | (S["shortcuts"] extends object ? keyof S["shortcuts"] : never) | (S["whitelist"] extends readonly string[] ? (string[] extends S["whitelist"] ? never : S["whitelist"][number]) : never) {
+  if (settings.disabled) return false;
+  const activeEl = getActiveEl((e.target as Node)?.ownerDocument); // shadow DOM proof
+  if ((e.key === " " || e.key === "Enter") && activeEl?.matches("button,input[type='button'],input[type='submit']")) return false;
+  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
   const combo = stringifyKeyEvent(e),
     { override, block, action, whitelisted } = getTermsForKey(combo, settings);
   if (block) return false;
   if (override) e.preventDefault();
-  if (action) return action;
-  if (whitelisted) return e.key.toLowerCase();
+  if (action) return action as any;
+  if (whitelisted) return e.key.toLowerCase() as any;
   return false;
 }
 
@@ -144,14 +154,14 @@ export function keyEventAllowed(e: KeyboardEvent, settings: keysSettings): false
  * @param combo Combo or combo list.
  * @returns Display label (for example: `" (ctrl+z) or (meta+z)"`).
  */
-export const formatKeyForDisplay = (combo: string | string[]): string => ` ${(Array.isArray(combo) ? combo : [combo]).map((c) => `(${cleanKeyCombo(c).replace(" ", "space")})`).join(" or ")}`;
+export const formatKeyForDisplay = (combo: string | string[] = ""): string => ` ${(Array.isArray(combo) ? combo : [combo]).map((c) => `(${cleanKeyCombo(c).replace(" ", "space")})`).join(" or ")}`;
 
 /**
  * Formats an action-shortcuts map for display labels.
  * @param keyShortcuts Action to combo(s) map.
  * @returns Action to display-label map.
  */
-export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string | string[]>): Record<string, string> {
+export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string | string[]> = {}): Record<string, string> {
   const shortcuts: Record<string, string> = {};
   for (const action of Object.keys(keyShortcuts)) shortcuts[action] = formatKeyForDisplay(keyShortcuts[action]);
   return shortcuts;
@@ -171,7 +181,7 @@ export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string
  * parseForARIAKS(["ctrl+z", "meta+z"], false)
  * // => "Control+z Meta+z"
  */
-export function parseForARIAKS(s: string | string[], formatted = true) {
+export function parseForARIAKS(s: string | string[] = "", formatted = true) {
   const m = { ctrl: "Control", cmd: "Meta", space: "Space", plus: "+" };
   return (formatted && !Array.isArray(s) ? s : formatKeyForDisplay(s))
     .toLowerCase()

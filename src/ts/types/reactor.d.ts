@@ -1,8 +1,9 @@
-import { REJECTABLE, INERTIA, INDIFFABLE, TERMINATOR } from "../core/consts";
-import { Reactor } from "../core/reactor";
-import { ReactorEvent } from "../core/event";
+import { REJECTABLE, INERTIA, INDIFFABLE, TERMINATOR } from "@core/consts";
+import { Reactor } from "@core/reactor";
+import { ReactorEvent } from "@core/event";
 import { Paths, WildPaths, ChildPaths, PathValue, PathBranchValue, PathKey, MaxDepth } from "./obj";
-import { Reactive } from "../core/mixins";
+import { Reactive } from "@core/mixins";
+import { Transaction } from "@modules/timeTravel/transaction";
 
 // ===========================================================================
 // CORE MARKERS & STATE WRAPPERS
@@ -32,20 +33,18 @@ export type { Reactor };
 /** Path-scoped value container used by payloads/events. */
 export interface Target<T, P extends WildPaths<T> = WildPaths<T>> {
   /** Dotted path for this value. */
-  path: P;
+  readonly path: P;
   /** Current value at the path. */
   value: PathValue<T, P>;
   /** Previous value at the path (only for `set` and `delete` events). */
-  oldValue?: PathValue<T, P>;
+  readonly oldValue?: PathValue<T, P>;
   /** Key for the value on it's parent object. */
-  key: PathKey<T, P>;
-  /**
-   * Whether the key for the value existed on the parent object.
-   * For accuracy on if `key` was in the `object` rather than checking `oldValue` against undefined
-   */
-  hadKey: boolean;
+  readonly key: PathKey<T, P>;
+  /** Whether the key for the value existed on the parent object.
+   * For accuracy on if `key` was in the `object` rather than checking `oldValue` against `undefined` */
+  readonly hadKey: boolean;
   /** Parent-branch value for the path. */
-  object: PathBranchValue<T, P>;
+  readonly object: PathBranchValue<T, P>;
 }
 
 /** Runtime payload union for mediated operations and update waves (Creates the IDE magic). */
@@ -53,24 +52,26 @@ export type Payload<T, P extends WildPaths<T> = WildPaths<T>, D extends number =
   | DirectPayload<T, P>
   | UpdatePayload<T, P, D>;
 
-export interface BasePayload<T, P extends WildPaths<T> = WildPaths<T>> {
-  /**
-   * Current target context for the active propagation path.
-   * Same reference to `target`, here for seamless API switches: `watch()` -> `on()`.
-   */
+/** Extensible meta shape injected into payloads via `...CTX.meta`. */
+export interface ReactorMeta {}
+export interface BasePayload<T, P extends WildPaths<T> = WildPaths<T>> extends ReactorMeta {
+  /** Current target context for the active propagation path.
+   * Same reference to `target`, here for seamless API switches: `watch()` -> `on()`. */
   currentTarget: Target<T, P>;
   /** Root reactive object for this payload. */
-  root: T;
-  /** For mediators to signal operation termination but doesn't stop the chain */
-  terminated?: boolean;
+  readonly root: T;
+  /** The `Reactor` instance that dispatched this payload. */
+  readonly reactor: Reactor<T>;
   /** Whether resolve/reject intent semantics are allowed on the event this routes to. */
-  rejectable: boolean;
+  readonly rejectable: boolean;
+  /** For mediators to signal operation termination but doesn't stop the chain. */
+  terminated?: boolean;
 }
 export interface DirectPayload<T, P extends WildPaths<T> = WildPaths<T>> extends BasePayload<T, P> {
-  /** Type of the operation that triggered this payload. */
-  type: "init" | "get" | "set" | "delete"; // init during `immediate: true` sync
+  /** Type of the operation that triggered this payload, `"init"` used only when `init: true` to scope callback inititialization as long as `initType` option is not overriden. */
+  type: "init" | "get" | "set" | "delete";
   /** Target context for this payload. */
-  target: Target<T, P>;
+  readonly target: Target<T, P>;
 }
 export interface UpdatePayload<
   T,
@@ -80,7 +81,7 @@ export interface UpdatePayload<
   /** Type of the operation that triggered this payload, i.e. "update" */
   type: "update";
   /** Target context for this payload. */
-  target: Target<T, ChildPaths<T, P, ".", D>>; // Target is strictly one of the child paths!
+  readonly target: Target<T, ChildPaths<T, P, ".", D>>; // Target is strictly one of the child paths!
 }
 
 /** Event union with payload-aware overrides for `type`, `path`, and value fields (Creates the IDE magic). */
@@ -98,8 +99,11 @@ export type REvent<
 
 type OverrideEvtProp = "type" | "target" | "value" | "oldValue" | "path";
 interface OverrideEvt<PL extends { target: { path: any; value: any; oldValue?: any } }> {
+  /** Original target path for this event instance wave. */
   path: PL["target"]["path"];
+  /** Current value at the event target path. */
   value: PL["target"]["value"];
+  /** Previous value at the event target path. */
   oldValue: PL["target"]["oldValue"];
 }
 
@@ -145,28 +149,23 @@ export type Listener<
 
 export type GetterRecord<T extends object, P extends WildPaths<T> = WildPaths<T>> = {
   cb: Getter<T, P>;
-  clup: () => boolean | undefined; // Registration Cleanup
-  sclup?: () => void; // AbortSignal Cleanup
-} & SyncOptionsTuple;
+} & RecordCleanup &
+  SyncOptionsTuple;
 
-/** Internal registry record for `set` mediators. */
 export type SetterRecord<T extends object, P extends WildPaths<T> = WildPaths<T>> = {
   cb: Setter<T, P>;
-  clup: () => boolean | undefined;
-  sclup?: () => void;
-} & SyncOptionsTuple;
+} & RecordCleanup &
+  SyncOptionsTuple;
 
 export type DeleterRecord<T extends object, P extends WildPaths<T> = WildPaths<T>> = {
   cb: Deleter<T, P>;
-  clup: () => boolean | undefined;
-  sclup?: () => void;
-} & SyncOptionsTuple;
+} & RecordCleanup &
+  SyncOptionsTuple;
 
 export type WatcherRecord<T extends object, P extends WildPaths<T> = WildPaths<T>> = {
   cb: Watcher<T, P>;
-  clup: () => boolean | undefined;
-  sclup?: () => void;
-} & SyncOptionsTuple;
+} & RecordCleanup &
+  SyncOptionsTuple;
 
 export type ListenerRecord<
   T extends object,
@@ -174,24 +173,30 @@ export type ListenerRecord<
   D extends number = MaxDepth
 > = {
   cb: Listener<T, P, D>;
-  clup: () => boolean | undefined;
-  sclup?: () => void;
   lDepth?: number; // Listener Depth
-} & ListenerOptionsTuple<D>;
+} & RecordCleanup &
+  ListenerOptionsTuple<D>;
+
+interface RecordCleanup {
+  clup: () => boolean | undefined; // Registration Cleanup
+  sclup?: () => void; // AbortSignal Cleanup
+}
 
 // ===========================================================================
 // CONFIGURATION OPTIONS
 // ===========================================================================
 
 export interface SyncOptionsTuple {
-  /** Whether to defer activation until the next tick. */
-  lazy?: boolean;
   /** Whether the callback should only run once. */
   once?: boolean;
   /** Optional `AbortSignal` to automatically handle registration cleanup. */
   signal?: AbortSignal;
-  /** Whether to run the callback immediately during registration, "auto" runs only if path exists, "strict" avoids bypassing the resolution system by triggering a `set` instead of just the callback for `.on()` or `.watch()`. */
-  immediate?: boolean | "auto" | "strict";
+  /** Whether to defer activation until the next tick. */
+  lazy?: boolean;
+  /** Whether to run the callback immediately during registration, "auto" runs only if path exists. */
+  init?: boolean | "auto";
+  /** Override for the scoped `"init"` type used for watchers and listeners that involves all registered for that path by mutating directly.  */
+  initType?: "set" | "delete";
 }
 /** Tuple-form and shorthand boolean for mediator/watch registrations. */
 export type SyncOptions = boolean | SyncOptionsTuple;
@@ -208,28 +213,30 @@ export type ListenerOptions<D extends number = MaxDepth> = boolean | ListenerOpt
 
 /** Options accepted by adapter effects (`sync: true` -> watch mode else listener mode). */
 export type EffectOptions =
-  | (Omit<SyncOptionsTuple, "immediate"> & { sync: true })
-  | (Omit<ListenerOptionsTuple, "immediate"> & { sync?: false });
+  | (Omit<SyncOptionsTuple, "init"> & { sync: true })
+  | (Omit<ListenerOptionsTuple, "init"> & { sync?: false });
 
 /** Reactor bootstrap/build configuration. */
 export interface ReactorBuild<T extends object, P extends Paths<T> = Paths<T>> {
-  /** 1-time set: Enables debug logging and diagnostics. */
+  /** 1-time set: Enables debug logging and diagnostics. @default  `false`. */
   debug?: boolean;
-  /** Enables cross-realm object detection support (e.g. iframes). */
+  /** Enables cross-realm object detection support (e.g. iframes). @default  `false`. */
   crossRealms?: boolean;
-  /** Enables structural-sharing snapshot behavior (requires `referenceTracking: true`). */
+  /** Enables structural-sharing snapshot behavior (requires `referenceTracking: true`). @default  `false`. */
   smartCloning?: boolean;
-  /** Enables event bubbling across ancestor paths, remove to use only capturing with one-way loops (default: true). */
+  /** Enables event bubbling across ancestor paths, disable to use only capturing with one-way loops. @default  `true`. */
   eventBubbling?: boolean;
-  /** Enables path lineage tracing for reference lookups on property access (requires `referenceTracking: true`). */
+  /** Enables event capturing across ancestor paths, disable to use only bubbling with one-way loops, `"auto"` is `true` for rejectable events. @default  `"auto"`. */
+  eventCapturing?: boolean | "auto";
+  /** Enables path lineage tracing for reference lookups on property access (requires `referenceTracking: true`). @default  `false`. */
   lineageTracing?: boolean;
-  /** Preserves Reflect trap context; safer with ~8x slowdown in hot paths, allows more types to be proxied (e.g. Classes). */
+  /** Preserves Reflect trap context; safer with ~8x slowdown in hot paths, allows more types to be proxied (e.g. Classes). @default  `false`. */
   preserveContext?: boolean;
-  /** Enables high-resolution timestamps on events, prefer over custom solutions for accuracy (default: false). */
+  /** Enables high-resolution timestamps on events only to avoid slowdown, prefer over custom solutions for accuracy @default  `false`. */
   eventTimeStamps?: boolean;
-  /** Custom equality used by setters and adapter comparisons (default: `Object.is`). */
+  /** Custom equality used by setters and adapter comparisons @default  `Object.is`. */
   equalityFunction?: (a: any, b: any) => boolean;
-  /** Custom batching scheduler for listener notification flushes (default: `queueMicrotask`). */
+  /** Custom batching scheduler for listener notification flushes @default  `queueMicrotask`. */
   batchingFunction?: (cb: () => void) => void;
   /** Enables identity/reference tracking features in the runtime. */
   referenceTracking?: boolean;

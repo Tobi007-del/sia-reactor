@@ -1,10 +1,10 @@
 import { useSyncExternalStore, useRef, useCallback } from "react";
 import { useISOLayoutEffect } from "../utils";
-import { NIL, NOOP } from "../../../core/consts";
-import { Reactor } from "../../../core/reactor";
-import { type Reactive, getReactor } from "../../../core/mixins";
-import type { EffectOptions, ReactorBuild } from "../../../types/reactor";
-import type { DeepReadonly } from "../../../types/obj";
+import { NIL, NOOP } from "@core/consts";
+import { Reactor } from "@core/reactor";
+import { type Reactive, getReactor } from "@core/mixins";
+import type { EffectOptions, ReactorBuild } from "@defs/reactor";
+import type { DeepReadonly } from "@defs/obj";
 import { Autotracker, withTracker } from "../../autotracker";
 
 /**
@@ -58,6 +58,8 @@ export function useSelector<T extends object, R>(target: T | Reactor<T> | Reacti
  * @param eq Equality function used to compare consecutive selector results.
  * @param options Watcher options if `options.sync: false` else Listener options.
  * @returns The selected slice.
+ * @example
+ * useAnySelector(() => store.user.name + spouseStore.user.name);
  */
 export function useAnySelector<R>(sel: () => R, eq = Object.is, options: EffectOptions = NIL): R {
   const atrkrRef = useRef<Autotracker<any>>(),

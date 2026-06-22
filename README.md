@@ -104,11 +104,11 @@ import { setPath, getPath, mergeObjs } from "sia-reactor/utils";
 
 ```javascript
 import { reactive, Reactor } from "sia-reactor";
-import "sia-reactor/utils"; // deep object helpers (setPath/getPath/deletePath/hasPath/parsePathObj/fanout/mergeObjs/deepClone/nuke...) take note of `fanout`!
+import "sia-reactor/utils"; // deep object helpers (setPath/getPath/deletePath/hasPath/parsePathObj/fanout/force/mergeObjs/deepClone/nuke...) take note of `fanout`!
 import "sia-reactor/modules"; // built-in modules + storage adapters
-import "sia-reactor/adapters/vanilla"; // Autotracker + effect API + TimeTravelOverlay class
+import "sia-reactor/adapters/vanilla"; // Autotracker + effect API + TimeTravelConsole class
 import "sia-reactor/adapters/react"; // useReactor/useSelector/usePath hooks
-import "sia-reactor/styles/time-travel-overlay.css"; // TimeTravelOverlay CSS
+import "sia-reactor/styles/time-travel-console.css"; // TimeTravelConsole CSS
 ```
 
 ### CDN / Browser (Global)
@@ -166,7 +166,7 @@ All methods are available on `Reactor` instances or objects wrapped in `reactive
 - **`watch(path, callback, options)` <-> `nowatch(path, callback)`**: Fires instantly after a mutation. Use strictly for critical internal engine syncing on leaf paths preferably, sees only direct operations.
 
 #### **Listeners (Asynchronous/Batched UI Observers)**
-- **`on(path, callback, options)` <-> `off(path, callback, options)`**: Attach DOM-style event listeners that respect `depth`. Supports `{ capture: true, depth: 1, once: true, immediate: true }`.
+- **`on(path, callback, options)` <-> `off(path, callback, options)`**: Attach DOM-style event listeners that respect `depth`. Supports `{ capture: true, depth: 1, once: true, init: true }`.
 - **`once(path, callback, options)`**: Fires once and self-destructs, others have too: `sonce(...)`, `gonce(...)`, `donce(...)`, `wonce(...)`.
 
 #### **Lifecycle & Utilities**
@@ -201,22 +201,23 @@ The engine provides native React bindings utilizing `useSyncExternalStore` and a
 
 ```javascript
 import { reactive } from "sia-reactor";
-import { useReactor, useAnyReactor, useSelector, useAnySelector, usePath, effect } from "sia-reactor/adapters/react"; 
+import { useReactor, useReactorSnapshot, useAnyReactor, useSelector, useSelectorSnapshot, useAnySelector, usePath, effect } from "sia-reactor/adapters/react"; 
 
 const store = reactive({ user: { name: "Kosi", age: 25 }, theme: "dark" });
 
 // 1. The Tracked State (Valtio-style)
 function Profile() {
-  const sameStore = useReactor(store); // `useReactorSnapshot()` if mutable issues arise
+  const sameStore = useReactor(store); // `useReactorSnapshot()` if mutable issues arise, e.g. rare zombie child
   useAnyReactor(); // when you just want state from any reactor
-  // Only re-renders if store.user.name mutates. Completely ignores age and theme!
-  return <div>{sameStore.user.name + otherStore.user.name}</div>;
+
+  return <div>{sameStore.user.name + otherStore.user.name}</div>; // Only re-renders if store.user.name mutates. Completely ignores age and theme!
 } // no snapshots like Valtio, you can read or write to anything
 
 // 2. The Slice Selector (Zustand-style)
 function Theme() {
   const theme = useSelector(store, (s) => s.theme); // `useSelectorSnapshot()` if mutable issues arise
   const newName = useAnySelector(() => store.user.name + spouseStore.user.name); // when you just want to derive any state from any reactor
+  
   return <div>Theme: {theme}</div>;
 }
 
@@ -227,15 +228,17 @@ function AgeObserver() {
 }
 
 // 4. Vanilla Side Effects (Runs anywhere, framework agnostic)
-const stopTracking = effect(() => console.log("User name changed to:", store.user.name)); // read or write as you wish
+const stopTracking = effect(() => console.log("User name changed to:", store.user.name), { sync: false }); 
+
 ```
+*NOTE: They support all listener and watcher options with an additional `sync: boolean` to switch between `on` and `watch` behavior.*
 
 ### Modules: The Extension Port
 
-The `Reactor` is designed to be a lightweight core. Extended capabilities are attached via Modules. Use `.attach(target: Reactor | Reactive<T>, id)` to chain reactors then `.setup(target, id)` which the `Reactor.use()` also calls to init, the `id` param will be direct keys on the final object, pass dotted paths to manipulate the shape.
+The `Reactor` is designed to be a lightweight core. Extended capabilities are attached via Modules. Use `.attach(target: Reactor | Reactive<T>, id)` to chain reactors then `.setup(target, id)` which the `Reactor.use()` also calls to init, the `id` param will be direct keys on the final object, pass dotted paths to manipulate the shape. `this` context is preserved for module methods, they're auto-bound.
 
 #### The Persistence Module
-Automatically syncs your State to LocalStorage, SessionStorage, Memory or IndexedDB. Always use this module first to avoid re-initialization issues.
+Automatically syncs your State to LocalStorage, SessionStorage, Memory or IndexedDB. Always `use` this module first to avoid re-initialization issues.
 
 ```javascript
 import { reactive, Reactor, getReactor } from "sia-reactor";
@@ -249,6 +252,9 @@ const persist = new PersistModule({
   throttle: 2500, // ms between saves
   fanout: true, // async hydration use leaf writes to sync initialized listeners.
   adapter: new IndexedDBAdapter({ dbName: "Session", version: 1, onversionchange: () => location.reload(), useSnapshot: true }) // or `LocalStorageAdapter` (instance or signature)
+  mirrorReads: true, // intents are requests, listen on their changes but only their state factual mirror is reliable data
+  mirrorWrites: true, // states are facts, can be stored but only their intent live mirror is reliable for effects, e.g. hydration
+  cachePayload: true // store the initial hydration payload to hydrate late-attaching reactors, free memory with `.clearCache()`
 }, getReactor(store)); // `Reactor` in second arg for path inference
 store.use(persist); // calls `.setup()`, use after all attachments, `id` is the second param too.
 
@@ -259,29 +265,42 @@ persist.config.whitelist = { ui: ["settings.theme"], app: ["settings.volume"] };
 ```
 
 #### The Time Travel Module
-Record state frames, step through history, and optionally attach a ready-to-use vanilla debug overlay. Beware of paradoxes, seperate intent from state even in time.
+Record state frames, step through history, and optionally attach a ready-to-use vanilla debug overlay. Beware of paradoxes, one timeline is used by default to keep things linear and predictable.
 
 ```javascript
 import { TimeTravelModule } from "sia-reactor/modules";
-import { effect, TimeTravelOverlay } from "sia-reactor/adapters/vanilla";
-import "sia-reactor/css/time-travel-overlay.css";
+import { effect, TimeTravelConsole } from "sia-reactor/adapters/vanilla";
+import "sia-reactor/css/time-travel-console.css";
 
-const time = new TimeTravelModule({ maxHistory: 300, loop: false, rate: 150, whitelist: ["store.playing", "store.currentTime"] });
-store.use(time);
+const time = new TimeTravelModule({ 
+  limit: 300, // max frames to keep in memory, older frames are dropped
+  loop: false, // if true, stepping past the last frame will wrap to the first frame and vice versa
+  playbackRate: 150, // multiplier for the delay between events during playback
+  whitelist: ["store.playing", "store.currentTime"], // all paths if omitted, use object if multiple reactors
+  beforeEntry: composeHeuristics(
+    createTxPathMerger(), // O(1) compression of duplicate paths inside transaction envelopes
+    createTextBundler({ whitelist: ["store.search.query", "store.profile.bio"] }) // Smart string diffing for text inputs
+  ) // Intercept and compress history in-flight before it settles!
+});
+store.use(time); // can chain (.use(persist).use(time))
 
-// If persist uses an async adapter (e.g. IndexedDB), wait till after hydration:
-persist.state.once("hydrated", () => store.use(time)); // starts `false`, one-time stall until it flips. i.e, also escapes custom initialization
-effect(() => persist.state.hydrated && store.use(time), { once: true }) // same logic, different look :)
+// If persist uses an async adapter (e.g. IndexedDB), stop tracking till after hydration:
+time.untrack(); // immediately after or at creation (new Time...ule.().untrack())
+persist.state.once("hydrated", time.track); // `hydrated` starts `false`, wait until it flips.
+effect(() => persist.state.hydrated && time.track(), { once: true }) // same logic, different look :)
 
-const overlay = new TimeTravelOverlay(time, { color: "#e26e02", startOpen: false, devOnly: true, container: document.body }); // optional debug interface for visulazation
+// Here's a cool trick:
+persist.attach(time.state, "timeTravel.state") // now, history will survive reloads
+
+const overlay = new TimeTravelConsole(time, { color: "#e26e02", startOpen: false, devOnly: true, container: document.body }); // optional debug interface for visualization
 ```
 ```jsx
-import { TimeTravelOverlay } from "sia-reactor/adapters/react";
+import { TimeTravelConsole } from "sia-reactor/adapters/react";
 
-<TimeTravelOverlay time={time} color="#e26e02" startOpen devOnly /> // react-safe instance lifecycle management, e.g. for HMR predictability.
+<TimeTravelConsole time={time} color="#e26e02" startOpen devOnly /> // react-safe instance lifecycle management, e.g. for HMR predictability.
 ```
 
-Useful methods: `play()`, `pause()`, `rewind()`, `clear()`, `undo()`, `redo()`, `step(n, forward)`, `jumpTo(frame)`, `export(replacer)`, `import(json, reviver)`.
+Useful methods: `play()`, `pause()`, `rewind()`, `undo()`, `redo()`, `step(n, forward)`, `jumpTo(frame)`, `track()`, `untrack()`, `clear()`, `export(replacer)`, `import(json, reviver)`.
 
 ### Reactor Build Options
 
@@ -290,9 +309,11 @@ These are some core build options accepted by `new Reactor(core, build)` and `re
 - **`debug?`**: 1-time set. Enables debug logging and diagnostics of core operations. (default: `false`)
 - **`crossRealms?`**: Enables cross-realm object detection support by using slower but safer type checks. (e.g. iframes) (default: `false`).
 - **`smartCloning?`**: Enables structural-sharing snapshot behavior (requires `referenceTracking: true`) (default: `false`).
-- **`eventBubbling?`**: Enables event bubbling across ancestor paths (default: `true`) (default: `true`).
+- **`eventBubbling?`**: Enables event bubbling across ancestor paths (default: `true`).
+- **`eventCapturing?`**: Enables event capturing across ancestor paths, `"auto"` is `true` for rejectable events. (default: `"auto"`).
 - **`lineageTracing?`**: Enables path lineage tracing for reference lookups on property access (requires `referenceTracking: true`) (default: `false`).
 - **`preserveContext?`**: Preserves Reflect trap context; safer with ~8x slowdown in hot paths, allows more types to be proxied (e.g. classes) (default: `false`).
+- **`eventTimeStamps?`**: Enables high resolution timestamps on events (default: `false`).
 - **`equalityFunction?`**: Custom equality used by setters and adapter comparisons (default: `Object.is`).
 - **`batchingFunction?`**: Custom batching scheduler for listener notification flushes (default: `queueMicrotask`)
 - **`referenceTracking?`**: Enables identity/reference tracking features in the runtime. (default: `false`).
@@ -353,8 +374,8 @@ player.on("intent.playing", (e) => {
 ### Troubleshooting
 
 - Listener timing feels late: `on(path, ...)` is microtask-batched by design; use `watch(path, ...)` only for strict immediate engine sync on leaf paths preferably.
-- Listeners don't react to changes: use `fanout(target, object, { depth: n })` instead of direct object sets to keep immutable semantics.
-- `reject()` appears ignored: call it in capture phase and ensure branch is wrapped in `intent(...)`, also remember it's the listener's choice to comply.
+- Listeners don't react to changes: use `fanout(target, object, { depth: n })` instead of direct object sets to keep immutable semantics or `force(() => ...)` to bypass equality checks.
+- `reject()` appears ignored: call it in capture phase and ensure branch is wrapped in `intent(...)`, also remember it's the listeners' choice to comply.
 - Snapshot behavior feels stale: enable `referenceTracking: true` with `smartCloning: true`, also use these when persisting to environments that don't take proxies, e.g. IndexedDB.
 - Cross-frame data is skipped: enable `crossRealms: true` for iframe/other realm objects.
 - Class/prototype behavior is odd: enable `preserveContext: true` (tradeoff: slower hot paths).
@@ -377,8 +398,8 @@ rtr.set("user.age", (value, terminated, payload) => {
   console.log(payload.type);       // "set" | "get" | "delete"
   console.log(payload.target);     // The exact anatomy of the mutation (see below)
   console.log(payload.root);       // Reference to the entire state tree
-  console.log(payload.terminated); // Boolean: Did a previous mediator kill this action?
   console.log(payload.rejectable); // Boolean: Is this target wrapped in `intent()`?
+  console.log(payload.terminated); // Boolean: Did a previous mediator kill this action?
 }); // you could use external callbacks but typed with `Payload<T, "user.age">`
 rtr.get("user.age", (value, payload) => {});
 rtr.delete("user.age", (terminated, payload) => {});
@@ -419,7 +440,7 @@ If you mutate `store.user.profile.name = "Kosi"`, the event wave travels like th
 2. **Target Phase:** `user.profile.name`
 3. **Bubble Phase:** `user.profile` ➔ `user` ➔ `*` (Root)
 
-*NOTE: Only `on` does this since it is batched to stay within recursive limits.*
+*NOTE: Only `on` does this since it is batched to stay within recursive limits. There are `Reactor` options (`eventCapturing`, `eventBubbling`) that toggle phases. See [details](#reactor-build-options) above.*
 
 #### The Event Anatomy (`REvent` type)
 Listeners receive a `ReactorEvent` (`REvent`). This object *inherits* everything from the `Payload`, but adds **Political Event Routing**, providing absolute surgical awareness of what is happening in the tree.
@@ -435,8 +456,11 @@ rtr.on("user.profile", (e) => {
   console.log(e.oldValue);      // "John" (The previous value)
   // 2. Political Routing
   console.log(e.eventPhase);    // 3 (Bubbling Phase)
-  console.log(e.bubbles);       // true/false 
+  console.log(e.bubbles);       // true/false (configure via eventBubbling option) 
+  console.log(e.captures);    // true/false (configure via eventCapturing option)
+  console.log(e.rejectable);   // true/false (Is this from an intent() path that can be rejected?)
   // 3. Misc
+  console.log(e.timestamp);   // 1697059200000 (`DOMHighResTimeStamp`, configurable via `eventTimestamp` option)
   console.log(e.composedPath()); // ["Kosi", { name: "Kosi", age: 26 }, { profile: { name: "Kosi", age: 26 } }, { user: { profile: { name: "Kosi", age: 26 } } }] (refs, target -> root)
 }); // you could use external callbacks but typed with `REvent<T, "user.age">`
 ```
@@ -468,7 +492,7 @@ To help you instantly differentiate between the object *itself* being replaced, 
 * If `store.user.profile = {}` happens, the listener receives `e.type === "set"`.
 * If `store.user.profile.name = "Kosi"` happens, the parent listener receives `e.type === "update"`.
 
-This allows for highly fine-grained syncing bridges across your application without writing heavy for-loop diffing algorithms! Use `{ depth: n }` to control how deep the path bubbles you see are, i.e. 
+This allows for highly fine-grained syncing bridges across your application without writing heavy for-loop diffing algorithms! Use `{ depth: n }` to control how deep the path bubbles you see are:
 
 ```javascript
 rtr.on("todos", (e) => console.log(e), { depth : 1 }); // only sees updates on direct children
@@ -487,12 +511,127 @@ rtr.on("todos", (e: REvent<User, "todos", 1>) => {
     const { path, key } = e.target;
     console.log(path, key); // or e.target.path, e.target.key
   }
-}, { depth: 1 }); // you need the generic for external callbacks only
+}, { depth: 1 }); // REvent generic is used for external callbacks
 ```
+*NOTE: Use with caution, it can be blind to fanouts, e.g during async hydration. Advised for just arrays as theirs default to atomic, i.e. 1-level deep (`.length`). For rare cases, cast `e` to a desired depth in the callback after custom conditions, e.g. `getDepth(e.target.path)` > (getDepth(e.currentTarget.path) + 1).*
 
 ---
 
 ## Architectural Tricks
+
+### Perks worth Highlighting
+
+#### 1. Transactions & Grouping
+By default, every mutation is recorded as a single frame. For UI gestures like dragging a slider, you want to group hundreds of rapid mutations into a single Undo/Redo step for the `TimeTravelModule`. 
+
+Transactions natively support **deep nesting** and preserve your semantic labels. When paired with `createTxPathMerger`, duplicate paths inside these envelopes are compressed in-flight with zero overhead.
+
+```javascript
+import { transaction, startTx, endTx } from "sia-reactor/modules";
+
+// Option A: Synchronous Grouping
+transaction(() => {
+  store.user.name = "Kosi";
+  store.user.age = 19;
+
+  transaction(() => {
+    store.user.pretty = true;
+  }, "Countenance Update"); // Deeply nested transactions are isolated and fully supported
+}, "Profile Update"); // All mutations undo/redo as one semantic envelope, fanout uses this internally
+
+// Option B: Multi-Tick Gestures (e.g., Slider Drag)
+let tx;
+slider.addEventListener("pointerdown", () => tx = startTx("Volume Scrub"));
+slider.addEventListener("pointerup", () => endTx(tx)); // Thousands of slider mutations happen here, natively compressed by `createTxPathMerger`
+
+```
+
+#### 2. Heuristics & Text Bundling
+Text inputs generate a massive amount of rapid, noisy history. However, if you are building a **truly deterministic, replayable time machine**, you cannot rely on the browser's isolated history. You must capture the text *and* the cursor state, and bundle rapid keystrokes into semantic, human-readable chunks. 
+
+The `createTextBundler` heuristic intelligently groups keystrokes and respects word boundaries. You pair this with `setValueWithCursor` to flawlessly sync the DOM. You are essentially building your own browser input physics, skip if using basic controlled or uncontrolled inputs.
+
+```javascript
+import { TimeTravelModule } from "sia-reactor/modules";
+import { createTextBundler, setValueWithCursor } from "sia-reactor/modules/timeTravel/heuristics";
+import { effect } from "sia-reactor/adapters/vanilla";
+
+// 1. The Setup: State storing [text, selectionStart, selectionEnd, selectionDirection]
+const chatTime = new TimeTravelModule({ 
+  whitelist: ["chatbox"], 
+  beforeEntry: createTextBundler({ 
+    toString: (v) => v[0], // Extract the string at index [0] so the bundler can intelligently diff the typing
+    throttle: 700, // max delay between edits
+    boundaryRegex: /[\s.,!?;:\n()[\]{}'"`]/, // chars considered "hard boundaries"
+    maxGrowth: 48, // prevents giant paragraph merging
+    bundleInserts: true, // `true` for chat apps; `false` for code editors
+    bundleDeletes: true, // `true` for most use cases
+    strictMerges: true, // typing -> deleting -> typing becomes separate frames
+  }) 
+});
+store.use(chatTime);
+
+// 2. The UI Integration (React Example)
+import { keyEventAllowed } from "sia-reactor/utils"; 
+
+function ChatInput() {
+  const s = useReactor(store); 
+  const ref = useRef(null);
+  const keySettings = { overrides: ["ctrl+z", "meta+z"], shortcuts: { undo: "ctrl+z", redo: ["ctrl+y", "ctrl+shift+z", "meta+shift+z"] }, blocks: ["ctrl+shift+r"] }; // more info in editor tooltips
+  
+  useEffect(() => {
+    return effect(() => {
+      const [text, start, end, dir] = store.chatbox; // works perfectly during playback as module updates the store.
+      setValueWithCursor(ref.current, text, start, end, dir);
+    }); // it's not React's state hence our `effect` API, cleans up on unmount
+  }, []);
+
+  return (
+    <textarea 
+      ref={ref}
+      defaultValue={s.chatbox[0]}
+      onInput={(e) => {
+        const t = e.target;
+        s.chatbox = [t.value, t.selectionStart, t.selectionEnd, t.selectionDirection]; // Save the raw text alongside the user's exact cursor selection bounds
+      }} 
+      onKeyDown={(e) => {
+        const action = keyEventAllowed(e, keySettings); // utility to interpret key combos according to your settings
+        action === "undo" ? chatTime.undo() : action === "redo" && chatTime.redo(); // trigger time travel actions accordingly.
+      }}
+    />
+  );
+} // This is how you take over the browser
+
+```
+
+#### 3. The Meta Context
+
+S.I.A. Reactor features a high-performance, synchronous meta-context engine. It allows you to inject temporary data (like flags or transaction IDs) into the event loop without polluting your core state even without function signatures.
+
+```javascript
+import { withMeta } from "sia-reactor/utils";
+import { silence } from "sia-reactor/modules";
+
+// 1. The Silence Wrapper: Executes mutations that the TimeTravelModule will not record. same as withMeta({ silent: true }, () => ...)
+silence(() => {
+  player.state.volume = 100; 
+}); // Useful for internal side-effects that shouldn't ruin the undo/redo history.
+
+// 2. Custom Meta Injection: Injects data seamlessly into the ReactorEvent payload for listeners to read.
+withMeta({ customSource: "gamepad" }, () => {
+  player.intent.playing = true;
+});
+
+player.on("intent.playing", (e) => {
+  console.log(e.customSource); // "gamepad"
+});
+
+declare module "sia-reactor" {
+  interface ReactorEventMeta {
+    customSource?: "gamepad" | "api" | string;
+  }
+}
+```
 
 ### The CSS Black Box
 

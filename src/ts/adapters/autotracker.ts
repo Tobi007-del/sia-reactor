@@ -1,8 +1,8 @@
-import { CTX, NIL, RAW } from "../core/consts";
-import { Reactor } from "../core/reactor";
-import type { EffectOptions } from "../types/reactor";
-import type { WildPaths, DeepReadonly } from "../types/obj";
-import { canHandle, nuke } from "../utils/obj";
+import { CTX, NIL, RAW } from "@core/consts";
+import { Reactor } from "@core/reactor";
+import type { EffectOptions } from "@defs/reactor";
+import type { WildPaths, DeepReadonly } from "@defs/obj";
+import { canHandle, nuke } from "@utils/obj";
 
 export let activeTracker: Autotracker<any> | null = null;
 
@@ -159,15 +159,15 @@ export class Autotracker<T extends object> {
 /**
  * Utility function to run a callback with a specific tracker context, restoring the previous context afterward.
  * @param tracker The Autotracker instance to set as the active tracker during the callback execution.
- * @param run The callback function to execute with the specified tracker context.
+ * @param callback The callback function to execute with the specified tracker context.
  * @param rtr Optional Reactor instance to associate with the tracker during execution.
  * @returns The result of the callback function.
  */
-export function withTracker<T>(tracker: Autotracker<any>, run: () => T, rtr?: Reactor<any>): T {
+export function withTracker<T>(tracker: Autotracker<any>, callback: () => T, rtr?: Reactor<any>): T {
   const prev = CTX.autotracker; // to survive nested trackers
   CTX.autotracker = tracker;
   try {
-    return tracker.unblock(rtr), run();
+    return tracker.unblock(rtr), callback();
   } finally {
     CTX.autotracker = prev;
   }

@@ -4,6 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -14,7 +16,16 @@
     "types": ["node"],
     "jsx": "react-jsx",
     "outDir": "./dist",
-    "rootDir": "./"
+    "rootDir": "./",
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@core/*": ["./src/ts/core/*"],
+      "@defs/*": ["./src/ts/types/*"],
+      "@adapters/*": ["./src/ts/adapters/*"],
+      "@modules/*": ["./src/ts/modules/*"],
+      "@utils/*": ["./src/ts/utils/*"],
+      "@styles/*": ["./src/css/*"]
+    }
   },
   "include": ["src/**/*", "tests", "tsup.config.ts"]
 }

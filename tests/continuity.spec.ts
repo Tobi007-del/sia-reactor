@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { reactive } from "../src/ts";
-import { PersistModule, TimeTravelModule, AsyncStorageAdapter, type StorageAdapterConfig } from "../src/ts/modules";
+import { reactive } from "@src/ts";
+import { PersistModule, TimeTravelModule, AsyncStorageAdapter, type StorageAdapterConfig } from "@src/ts/modules";
 
 class AsyncMemoryAdapter extends AsyncStorageAdapter<StorageAdapterConfig> {
   public static store = new Map<string, any>();
@@ -48,12 +48,12 @@ describe("Continuity proof: async persistence + time travel", () => {
     AsyncMemoryAdapter.store.clear();
 
     // Session A
-    const timeA = new TimeTravelModule();
-    const persistA = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, useSnapshot: true }).attach(timeA.state, "timeTravel");
+    const timeA = new TimeTravelModule().untrack();
+    const persistA = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeA.state, "timeTravel.state");
     const stateA = reactive({ count: 0 });
 
-    stateA.use(persistA, "app");
-    persistA.state.once("hydrated", () => stateA.use(timeA));
+    stateA.use(persistA, "app").use(timeA);
+    persistA.state.once("hydrated", timeA.track);
 
     await wait();
 
@@ -71,12 +71,12 @@ describe("Continuity proof: async persistence + time travel", () => {
     const expectedCount = stateA.count;
 
     // Session B (reload simulation)
-    const timeB = new TimeTravelModule();
-    const persistB = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, useSnapshot: true }).attach(timeB.state, "timeTravel");
+    const timeB = new TimeTravelModule().untrack();
+    const persistB = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeB.state, "timeTravel.state");
     const stateB = reactive({ count: 0 });
 
-    stateB.use(persistB, "app");
-    persistB.state.once("hydrated", () => stateB.use(timeB));
+    stateB.use(persistB, "app").use(timeB);
+    persistB.state.once("hydrated", timeB.track);
 
     await wait();
 
@@ -96,12 +96,12 @@ describe("Continuity proof: async persistence + time travel", () => {
     AsyncMemoryAdapter.store.clear();
     FlakyAsyncMemoryAdapter.failGetOnce = true;
 
-    const time = new TimeTravelModule();
-    const persist = new PersistModule({ key: "RECOVER", throttle: 0, adapter: FlakyAsyncMemoryAdapter, useSnapshot: true }).attach(time.state, "timeTravel");
+    const time = new TimeTravelModule().untrack();
+    const persist = new PersistModule({ key: "RECOVER", throttle: 0, adapter: FlakyAsyncMemoryAdapter, snapshot: true }).attach(time.state, "timeTravel.state");
     const state = reactive({ count: 0 });
 
-    state.use(persist, "app");
-    persist.state.once("hydrated", () => state.use(time));
+    state.use(persist, "app").use(time);
+    persist.state.once("hydrated", time.track);
 
     await wait();
 
@@ -116,17 +116,17 @@ describe("Continuity proof: async persistence + time travel", () => {
     expect(saved?.app?.count).toBe(7);
   });
 
-  it("restores multi-reactor branches (app, ui, timeTravel) after reload", async () => {
+  it("restores multi-reactor branches (app, ui, timeTravel.state) after reload", async () => {
     AsyncMemoryAdapter.store.clear();
 
     // Session A
-    const timeA = new TimeTravelModule();
+    const timeA = new TimeTravelModule().untrack();
     const uiA = reactive({ theme: "dark" });
-    const persistA = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, useSnapshot: true }).attach(timeA.state, "timeTravel").attach(uiA, "ui");
+    const persistA = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeA.state, "timeTravel.state").attach(uiA, "ui");
     const appA = reactive({ count: 0 });
 
-    appA.use(persistA, "app");
-    persistA.state.once("hydrated", () => appA.use(timeA));
+    appA.use(persistA, "app").use(timeA);
+    persistA.state.once("hydrated", timeA.track);
 
     await wait();
 
@@ -147,13 +147,13 @@ describe("Continuity proof: async persistence + time travel", () => {
     };
 
     // Session B
-    const timeB = new TimeTravelModule();
+    const timeB = new TimeTravelModule().untrack();
     const uiB = reactive({ theme: "dark" });
-    const persistB = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, useSnapshot: true }).attach(timeB.state, "timeTravel").attach(uiB, "ui");
+    const persistB = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeB.state, "timeTravel.state").attach(uiB, "ui");
     const appB = reactive({ count: 0 });
 
     appB.use(persistB, "app");
-    persistB.state.once("hydrated", () => appB.use(timeB));
+    persistB.state.once("hydrated", timeB.track);
 
     await wait();
 

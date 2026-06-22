@@ -1,116 +1,38 @@
 import { useEffect, useRef } from "react";
-import { reactive } from "../../src/ts/core/mixins";
-import { effect } from "../../src/ts/adapters/vanilla";
-import { useAnyReactor, useAnySelector, useReactorSnapshot, useReactor, useSelector, useSelectorSnapshot, usePath, TimeTravelOverlay } from "../../src/ts/adapters/react";
-import { IndexedDBAdapter, PersistModule, TimeTravelModule } from "../../src/ts/modules";
-import "../../src/css/time-travel-overlay.css";
-
-const time = new TimeTravelModule(),
-  persist = new PersistModule({ key: "SIA_DEMO", adapter: new IndexedDBAdapter({ durability: "relaxed" }), useSnapshot: true, throttle: 150 }).attach(time.state, "timeTravel"),
-  state = reactive({ count: 0 }),
-  increment = () => (state.count += 1),
-  decrement = () => (state.count -= 1),
-  reset = () => (state.count = 0);
-// Module setup
-state.use(persist, "app"), persist.state.once("hydrated", () => state.use(time));
-((window as any).state = state), ((window as any).time = time), ((window as any).persist = persist); // for demo debugging purposes
-
-function CounterCard({ label, count, renders }: { label: string; count: number; renders: number }) {
-  return (
-    <section className="card">
-      <div className="title">{label}</div>
-      <div className="count">{count}</div>
-      <div className="row">
-        <button onClick={decrement}>-1</button>
-        <button onClick={increment}>+1</button>
-      </div>
-      <div className="muted">renders: {renders}</div>
-    </section>
-  );
-}
-
-function ReactorCounter() {
-  const s = useReactor(state),
-    renders = useRef(0);
-  return <CounterCard label="useReactor" count={s.count} renders={++renders.current} />;
-}
-function AnyReactorCounter() {
-  useAnyReactor();
-  const renders = useRef(0);
-  return <CounterCard label="useAnyReactor" count={state.count} renders={++renders.current} />;
-}
-function ReactorSnapshotCounter() {
-  const s = useReactorSnapshot(state),
-    renders = useRef(0);
-  return <CounterCard label="useReactorSnapshot" count={s.count} renders={++renders.current} />;
-}
-function SelectorCounter() {
-  const count = useSelector(state, (s) => s.count),
-    renders = useRef(0);
-  return <CounterCard label="useSelector" count={count} renders={++renders.current} />;
-}
-function AnySelectorCounter() {
-  const count = useAnySelector(() => state.count),
-    renders = useRef(0);
-  return <CounterCard label="useAnySelector" count={count} renders={++renders.current} />;
-}
-function SelectorSnapshotCounter() {
-  const count = useSelectorSnapshot(state, (s) => s.count),
-    renders = useRef(0);
-  return <CounterCard label="useSelectorSnapshot" count={count} renders={++renders.current} />;
-}
-function PathCounter() {
-  const count = usePath(state, "count"),
-    renders = useRef(0);
-  return <CounterCard label="usePath" count={count} renders={++renders.current} />;
-}
-function VanillaEffectPanel() {
-  const valRef = useRef<HTMLDivElement | null>(null),
-    runsRef = useRef<HTMLDivElement | null>(null);
-  useEffect((runs = 0) => effect(() => (valRef.current && (valRef.current.textContent = String(state.count)), runsRef.current && (runsRef.current.textContent = String(++runs)))), []);
-  return (
-    <section className="panel">
-      <h2>Vanilla JS Effect</h2>
-      <p className="meta">Live side-by-side subscription using the vanilla adapter.</p>
-      <div className="card">
-        <div className="title">effect(() =&gt; ...)</div>
-        <div className="count" ref={valRef}>
-          {state.count}
-        </div>
-        <div className="muted">
-          effect runs: <span ref={runsRef}>0</span>
-        </div>
-      </div>
-    </section>
-  );
-}
+import { TimeTravelConsole, useReactor } from "@adapters/react";
+import { createEl } from "@utils/dom";
+import "@styles/time-travel-console.css";
+import { AppNav } from "./components/AppNav";
+import { hubTime, state, useRouteSync } from "./model";
+import { ChatPage } from "./pages/ChatPage";
+import { CountersPage } from "./pages/CountersPage";
 
 export function App() {
+  useRouteSync();
+  const s = useReactor(state),
+    topbarRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const topbar = topbarRef.current;
+    if (!topbar) return;
+    const sentinel = createEl("div", { ariaHidden: "true" }, undefined, { position: "absolute", top: "0", left: "0", width: "1px", height: "1px" });
+    topbar.parentElement?.insertBefore(sentinel, topbar);
+    const observer = new IntersectionObserver(([entry]) => topbar?.classList.toggle("is-stuck", !entry.isIntersecting), { threshold: 1 });
+    observer.observe(sentinel);
+    return () => (observer.disconnect(), sentinel.remove());
+  }, []);
+
   return (
-    <div className="wrap">
-      <h1>SIA Reactor: Same Counter Through 5 Hooks</h1>
-      <p className="meta">All cards bind to the same state.count. Interact with any card or global controls.</p>
-      <div className="toolbar">
-        <button onClick={decrement}>Global -1</button>
-        <button onClick={increment}>Global +1</button>
-        <button onClick={reset}>Reset</button>
-      </div>
-      <div className="layout">
-        <section className="panel">
-          <h2>React Hook Counters</h2>
-          <div className="grid">
-            <ReactorCounter />
-            <AnyReactorCounter />
-            <ReactorSnapshotCounter />
-            <SelectorCounter />
-            <AnySelectorCounter />
-            <SelectorSnapshotCounter />
-            <PathCounter />
-          </div>
-        </section>
-        <VanillaEffectPanel />
-      </div>
-      <TimeTravelOverlay time={time} color="#43d2ff" startOpen={true} />
+    <div className="demo-app">
+      <TimeTravelConsole time={hubTime} title="Hub Tape" color={"var(--accent)"} startOpen={false} />
+      <header ref={topbarRef} className="topbar">
+        <div>
+          <p className="eyebrow">SIA Reactor demo workspace</p>
+          <h1>{s.page === "chat" ? "Gemini-style prompt" : "Counter lab"}</h1>
+        </div>
+        <AppNav currentPage={s.page} />
+      </header>
+      <main className="content">{s.page === "chat" ? <ChatPage /> : <CountersPage />}</main>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reactive } from "../src/ts";
+import { reactive } from "@src/ts";
 
 describe("S.I.A. Engine: preserveContext + lineage tracing", () => {
   it("must preserve prototype context for custom objects when preserveContext=true", () => {

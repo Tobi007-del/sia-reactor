@@ -215,7 +215,7 @@ export type DeepReadonly<T, D extends number = MaxDepth> = [D] extends [0]
 
 /** Config for defining recursive limits for all parts of the application */
 export interface DepthConfig {
-  max: 11; // 19 is observed bundler recursive limit for state trees so, raise amm!!!
+  max: 7; // 19 is observed bundler recursive limit for state trees so, raise amm!!!
   prev: [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
   next: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 }

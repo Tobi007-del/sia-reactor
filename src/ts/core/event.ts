@@ -1,6 +1,6 @@
-import type { Payload, Reactor } from "../types/reactor";
-import type { WildPaths } from "../types/obj";
-import { getTrailRecords } from "../utils/obj";
+import type { Payload } from "@defs/reactor";
+import type { WildPaths } from "@defs/obj";
+import { getTrailRecords } from "@utils/obj";
 
 // ===========================================================================
 // The S.I.A (State & Intent Architecture) `Event`
@@ -24,36 +24,32 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
   public static readonly BUBBLING_PHASE = 3;
   /** Current propagation phase for this event instance. */
   public eventPhase = ReactorEvent.NONE;
-  /** Current event type for the active propagation path, clone immediately if async */
-  public type: Payload<T, P>["type"];
-  /**
-   * Current target context for the active propagation path, clone immediately if async.
-   * Also use to survive future object shape changes from nesting for a path callback.
-   */
-  public currentTarget: Payload<T, P>["currentTarget"];
+  /** Current event type for the active propagation path, use immediately if async */
+  public type!: Payload<T, P>["type"];
+  /** Current target context for the active propagation path, use immediately if async. Also use to survive future object shape changes from nesting for a path callback. */
+  public currentTarget!: Payload<T, P>["currentTarget"];
+  /** Original event target context. */
+  public readonly target!: Payload<T, P>["target"];
+  /** Root reactive object for this event instance wave. */
+  public readonly root!: Payload<T, P>["root"];
+  /** The `Reactor` instance that dispatched this event instance. */
+  public readonly reactor!: Payload<T, P>["reactor"];
+  /** Whether resolve/reject intent semantics are allowed for this event instance. */
+  public readonly rejectable!: boolean;
   /** Original event type before propagation remapping. */
   public readonly staticType: Exclude<Payload<T, P>["type"], "update">;
-  /** Original event target context. */
-  public readonly target: Payload<T, P>["target"];
-  /** Root reactive object for this event instance wave. */
-  public readonly root: Payload<T, P>["root"];
   /** Original target path for this event instance wave. */
   public readonly path: Payload<T, P>["target"]["path"];
   /** Current value at the event target path. */
   public readonly value: Payload<T, P>["target"]["value"];
   /** Previous value at the event target path. */
   public readonly oldValue: Payload<T, P>["target"]["oldValue"];
-  /** Whether resolve/reject intent semantics are allowed for this event instance. */
-  public readonly rejectable: boolean;
   /** Whether this event instance wave can bubble back up to ancestors or just capture down. */
-  public readonly bubbles: boolean;
-  /**
-   * `DOMHighResTimeStamp` for this event instance payload for native event parity and accuracy.
-   * Enable `eventTimeStamps` option, then use this over custom timestamps in listeners for accuracy.
-   * */
+  public readonly bubbles: boolean = false;
+  /** Whether this event instance wave can capture down to descendants or just bubble up. */
+  public readonly captures: boolean = false;
+  /** `DOMHighResTimeStamp` for this event payload for native event parity, Enable `eventTimeStamps` config, then use this over custom timestamps for accuracy. */
   public readonly timestamp?: number;
-  /** The `Reactor` instance that dispatched this event instance. */
-  public readonly reactor: Reactor<T>;
   protected _resolved = "";
   protected _rejected = "";
   protected _propagationStopped = false;
@@ -63,18 +59,15 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
    * @param payload Source payload for this event instance.
    * @param reactor The `Reactor` instance creating this event instance.
    */
-  constructor(payload: Payload<T, P>, reactor: Reactor<T>) {
-    this.staticType = this.type = payload.type as ReactorEvent<T, P>["staticType"];
-    this.target = payload.target;
-    this.currentTarget = payload.currentTarget;
-    this.root = payload.root;
+  constructor(payload: Payload<T, P>) {
+    Object.assign(this, payload);
+    this.staticType = payload.type as ReactorEvent<T, P>["staticType"];
     this.path = payload.target.path;
     this.value = payload.target.value;
     this.oldValue = payload.target.oldValue;
-    this.rejectable = payload.rejectable;
-    this.bubbles = !!reactor.config.eventBubbling;
-    if (reactor.config.eventTimeStamps) this.timestamp = performance.now();
-    this.reactor = reactor;
+    if (this.reactor.config.eventBubbling) this.bubbles = true;
+    if (this.reactor.config.eventCapturing === "auto" ? this.rejectable : this.reactor.config.eventCapturing) this.captures = true;
+    if (this.reactor.config.eventTimeStamps) this.timestamp = performance.now();
   }
 
   /** Whether propagation has been stopped. */
@@ -126,10 +119,7 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
     if (this.rejectable) this.reactor.log(`[ReactorEvent] ${(this._rejected = reason || `${this.staticType} intent rejected at "${this.path}"`)}`);
   }
 
-  /**
-   * Returns event path values from target to root.
-   * @returns Composed path values in bubbling order.
-   */
+  /** Returns event path values from target to root in bubbling order. */
   public composedPath() {
     return getTrailRecords<T>(this.root, this.path as WildPaths<T>, true).map((r) => r[2]); // values reversed to mimic bubbling
   }

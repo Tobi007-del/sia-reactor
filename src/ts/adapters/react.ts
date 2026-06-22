@@ -6,4 +6,4 @@ export { usePath } from "./react/hooks/usePath";
 
 export { useISOLayoutEffect } from "./react/utils";
 
-export { type TimeTravelOverlayProps, TimeTravelOverlay } from "./react/TimeTravelOverlay";
+export { type TimeTravelConsoleProps, TimeTravelConsole } from "./react/TimeTravelConsole";

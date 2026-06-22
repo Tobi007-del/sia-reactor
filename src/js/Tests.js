@@ -78,7 +78,7 @@ window.runTests = async () => {
   // TEST 3: EVENT PHASE ROUTING (DOM SIMULATION)
   // ==========================================
   group("PHASE 3: DOM-Style Event Phase Routing");
-  window.t3 = new Reactor({ network: { status: "online" } });
+  window.t3 = new Reactor({ network: { status: "online" } }, { eventCapturing: true });
 
   const executionOrder = [];
 

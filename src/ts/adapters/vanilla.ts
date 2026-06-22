@@ -2,4 +2,4 @@ export { effect } from "./vanilla/effect";
 
 export { Autotracker, withTracker } from "./autotracker";
 
-export { type TimeTravelOverlayConfig, TimeTravelOverlay } from "./vanilla/TimeTravelOverlay";
+export { type TimeTravelConsoleConfig, TimeTravelConsole } from "./vanilla/TimeTravelConsole";

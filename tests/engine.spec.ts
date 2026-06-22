@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { reactive, TERMINATOR } from "../src/ts";
-import { effect } from "../src/ts/adapters/vanilla";
-import { TimeTravelModule, PersistModule, MemoryAdapter } from "../src/ts/modules";
+import { reactive, TERMINATOR } from "@src/ts";
+import { effect } from "@adapters/vanilla";
+import { TimeTravelModule, PersistModule, MemoryAdapter, HistoryEntry } from "@src/ts/modules";
 
 describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
   // ===========================================================================
@@ -160,7 +160,7 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
 
       // The timeline should have overwritten Frame 1 and 2
       expect(timeModule.state.history.length).toBe(2);
-      expect(timeModule.state.history[1].value).toBe(11);
+      expect((timeModule.state.history[1] as HistoryEntry).to).toBe(11);
     });
 
     it("must solve the 'Explicit Undefined' paradox using hadKey flags", () => {

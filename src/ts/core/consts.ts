@@ -1,18 +1,10 @@
-import { Autotracker } from "../adapters/autotracker";
+import { ReactorBuild, ReactorMeta } from "@defs/reactor";
+import { Autotracker } from "@adapters/autotracker";
 
 // ===========================================================================
 // The S.I.A (State & Intent Architecture) Constants
 // ===========================================================================
 
-/** Global context object for sharing state across the reactor runtime. */
-export const CTX = {
-  /** Flag indicating whether the application is running in development mode. */
-  isDevEnv: "undefined" !== typeof process ? process.env.NODE_ENV !== "production" : true,
-  /** Flag indicating whether a cascade is currently ongoing so reactors can allow all writes. */
-  isCascading: false,
-  /** Active `Autotracker` instance, override for automatic dependency collection on `Reactor` traps. */
-  autotracker: null as Autotracker<any> | null,
-};
 /** Marker to access underlying raw object from a proxy. */
 export const RAW: unique symbol = Symbol.for("S.I.A_RAW"); // "Get Original Obj" Marker
 /** Marker to opt an object out of reactor proxy handling. */
@@ -32,8 +24,30 @@ export const RTR_BATCH = "undefined" !== typeof window ? ("undefined" !== typeof
 /** Default reactor logger prefix function. */
 export const RTR_LOG = console.log.bind(console, "[S.I.A Reactor]");
 /** Canonical option keys parsed for listener and mediator registrations. */
-export const EVT_OPTS = { LISTENER: ["capture", "depth", "once", "signal", "immediate"], MEDIATOR: ["lazy", "signal", "immediate"] } as const;
+export const EVT_OPTS = { LISTENER: ["capture", "depth", "once", "signal", "init"], MEDIATOR: ["lazy", "signal", "init"] } as const;
 /** Frozen empty object used as a zero-allocation default options value. */
 export const NIL = Object.freeze({}) as any; // empty obj to escape any optional chain overhead
 /** Shared no-operation function. */
 export const NOOP = () => {}; // no operation function to escape optional chain overhead
+/** Global context object for sharing state across the reactor runtime. */
+export const CTX = {
+  /** Flag indicating whether the application is running in development mode. */
+  isDevEnv: "undefined" !== typeof process ? process.env.NODE_ENV !== "production" : true,
+  /** Flag indicating whether an operation is bypassing checks so reactors can allow all writes. */
+  usingForce: false,
+  /** Active `Autotracker` instance, override for automatic dependency collection on `Reactor` traps. */
+  autotracker: null as Autotracker<any> | null,
+  /** Extensible meta context for payloads and cross-cutting concerns. */
+  meta: null as ReactorMeta | null,
+  /** Default configuration for new `Reactor` instances and also fallback for utils that need and are called without these options. */
+  defaults: {
+    crossRealms: false,
+    smartCloning: false,
+    eventBubbling: true,
+    eventCapturing: "auto",
+    lineageTracing: false,
+    preserveContext: false,
+    equalityFunction: Object.is,
+    batchingFunction: RTR_BATCH,
+  } as Partial<ReactorBuild<any>>,
+};

@@ -1,6 +1,6 @@
 {
   "name": "sia-reactor",
-  "version": "0.0.34",
+  "version": "0.0.35",
   "description": "The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) engine that gives data transactional mutation routing and multi-phase state observation.",
   "author": "Oketade Oluwatobiloba <tobioketade007@gmail.com>",
   "license": "MIT",
@@ -18,7 +18,10 @@
   "unpkg": "./dist/super.global.js",
   "jsdelivr": "./dist/super.global.js",
   "types": "./dist/index.d.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -50,7 +53,7 @@
       "require": "./dist/adapters/react.cjs",
       "default": "./dist/adapters/react.js"
     },
-    "./styles/time-travel-overlay.css": "./dist/styles/time-travel-overlay.css"
+    "./styles/time-travel-console.css": "./dist/styles/time-travel-console.css"
   },
   "publishConfig": {
     "access": "public"
@@ -58,7 +61,7 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest --reporter=verbose",
-    "test:run": "vitest run  --reporter=verbose",
+    "test:run": "vitest run --reporter=verbose",
     "demo": "vite --config demo/vite.config.ts",
     "demo:build": "vite build --config demo/vite.config.ts",
     "demo:preview": "vite preview --config demo/vite.config.ts",

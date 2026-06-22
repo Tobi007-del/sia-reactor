@@ -15,7 +15,7 @@ type Style = Partial<CSSStyleDeclaration>;
 export function createEl<K extends keyof HTMLElementTagNameMap>(tag: K, props?: Partial<HTMLElementTagNameMap[K]>, dataset?: Dataset, styles?: Style): HTMLElementTagNameMap[K];
 export function createEl(tag: string, props?: Partial<HTMLElement>, dataset?: Dataset, styles?: Style): HTMLElement | null;
 export function createEl(tag: string, props?: Record<string, unknown>, dataset?: Dataset, styles?: Style, el = tag ? document?.createElement(tag) : null): HTMLElement | null {
-  return assignEl(el, props, dataset, styles), el;
+  return assignEl(el, props, dataset, styles);
 }
 
 /**
@@ -24,14 +24,16 @@ export function createEl(tag: string, props?: Record<string, unknown>, dataset?:
  * @param props Optional properties to set on the element.
  * @param dataset Optional dataset attributes for the element.
  * @param styles Optional CSS styles for the element.
+ * @return The modified HTML element to allow signature swaps with `createEl()`.
  */
-export function assignEl<K extends keyof HTMLElementTagNameMap>(el?: HTMLElementTagNameMap[K], props?: Partial<HTMLElementTagNameMap[K]>, dataset?: Dataset, styles?: Style): void;
-export function assignEl(el?: HTMLElement | null, props?: Partial<HTMLElement>, dataset?: Dataset, styles?: Style): void;
-export function assignEl(el?: HTMLElement | null, props?: Record<string, unknown>, dataset?: Dataset, styles?: Style): void {
-  if (!el) return;
+export function assignEl<El extends HTMLElement>(el?: El | null, props?: Partial<El>, dataset?: Dataset, styles?: Style): El | null;
+export function assignEl<El extends HTMLElement>(el?: El | null, props?: Partial<El>, dataset?: Dataset, styles?: Style): El | null;
+export function assignEl(el?: HTMLElement | null, props?: Record<string, unknown>, dataset?: Dataset, styles?: Style): HTMLElement | null {
+  if (!el) return null;
   if (props) for (const k of Object.keys(props)) if (props[k] !== undefined) (el as unknown as Record<string, unknown>)[k] = props[k];
   if (dataset) for (const k of Object.keys(dataset)) if (dataset[k] !== undefined) (el.dataset as DOMStringMap)[k] = String(dataset[k]);
   if (styles) for (const k of Object.keys(styles)) if (styles[k as keyof Style] !== undefined) (el.style as unknown as Record<string, unknown>)[k] = styles[k as keyof Style];
+  return el;
 }
 
 /** Get the currently active element, traversing into shadow roots if necessary.
