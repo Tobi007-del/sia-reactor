@@ -43,10 +43,10 @@ export function getPath<T extends object, const S extends string = ".", P extend
       match = key.includes("[") && key.match(arrRegex);
     if (match) {
       const [, key, iStr] = match;
-      if (!Array.isArray(currObj[key]) || !(key in currObj)) return undefined!;
+      if (!Array.isArray(currObj[key])) return undefined!;
       currObj = currObj[key][Number(iStr)];
     } else {
-      if (!isObj<Record<string, any>>(currObj) || !(key in currObj)) return undefined!;
+      if (!isObj<Record<string, any>>(currObj)) return undefined!;
       currObj = currObj[key];
     }
   }
@@ -332,14 +332,14 @@ export function nuke(target: any): void {
 export function withMeta<T>(props: ReactorMeta, fn: () => T): T {
   CTX.meta ??= {};
   const cache: Record<string, any> = {};
-  for (const key in props) {
+  for (const key of Object.keys(props)) {
     cache[key] = (CTX.meta as any)[key];
     (CTX.meta as any)[key] = (props as any)[key];
   }
   try {
     return fn();
   } finally {
-    for (const key in cache) {
+    for (const key of Object.keys(cache)) {
       if (cache[key] === undefined) resetMeta(key as any);
       else (CTX.meta as any)![key] = cache[key];
     }
