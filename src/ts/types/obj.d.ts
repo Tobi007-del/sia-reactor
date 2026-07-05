@@ -32,7 +32,7 @@ export type WildPaths<T, S extends string = "."> = "*" | Paths<T, S>;
 /** Child-path expansion for a path up to relative depth `D{x}`. */
 export type ChildPaths<
   T,
-  P extends WildPaths<T>,
+  P extends WildPaths<T, S>,
   S extends string = ".",
   D extends number = MaxDepth
 > = Extract<

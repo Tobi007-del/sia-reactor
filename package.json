@@ -1,7 +1,7 @@
 {
   "name": "sia-reactor",
   "version": "0.0.35",
-  "description": "The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) engine that gives data transactional mutation routing and multi-phase state observation.",
+  "description": "The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) engine that gives your data transactional mutation routing and multi-phase state observation.",
   "author": "Oketade Oluwatobiloba <tobioketade007@gmail.com>",
   "license": "MIT",
   "repository": {

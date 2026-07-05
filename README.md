@@ -1,6 +1,6 @@
 # sia-reactor
 
-> The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) Engine featuring zero-allocation loops, DOM-style event propagation, microtask batching, and structural sharing.
+> The Programmable Data DOM. A high-performance State & Intent Architecture (S.I.A.) engine that gives your data transactional mutation routing and multi-phase state observation.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![NPM Version](https://img.shields.io/npm/v/sia-reactor.svg)](https://www.npmjs.com/package/sia-reactor)

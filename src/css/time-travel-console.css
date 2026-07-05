@@ -73,6 +73,7 @@
   right: 0;
   bottom: calc(100% + 8px);
   width: min(360px, calc(100vw - 50px));
+  max-height: max(260px, calc(100vh - 50px));
   background: var(--sia-tt-bg);
   border: 1px solid var(--sia-tt-line);
   border-radius: 12px;
@@ -84,6 +85,7 @@
   backdrop-filter: blur(6px);
   pointer-events: auto;
   opacity: 1;
+  overflow-y: auto;
   transform: translateY(0) scale(1);
   transform-origin: right bottom;
   visibility: visible;

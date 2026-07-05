@@ -81,12 +81,12 @@ export class Reactor<T extends object> {
     const proxy = new Proxy(target, {
       // Robust Proxy handler
       get: (object, key, receiver) => {
-        if (key === RAW) return this.log(`👀 [Reactor \`get\` Trap] Peeked at ${object}`), object;
+        if (key === RAW) return this.log(`👀 [\`get\` Trap] Peeked at ${object}`), object;
         let value = !this.config.preserveContext ? (object as any)[key] : Reflect.get(object, key, receiver);
         const keyStr = String(key),
           fullPath = (path ? path + "." + keyStr : keyStr) as Paths<T>,
           paths = this.config.lineageTracing ? this.trace(object, keyStr) : fullPath;
-        this.log(`🔍 [Reactor \`get\` Trap] Initiated for "${keyStr}" on "${paths}"`), CTX.autotracker?.track(fullPath, this);
+        this.log(`🔍 [\`get\` Trap] Initiated for "${keyStr}" on [${paths}]`), CTX.autotracker?.track(fullPath, this);
         if (this.config.get) value = this.config.get(object as PathBranchValue<T>, key as PathKey<T>, value, receiver, paths);
         if (this.getters) {
           const wildcords = this.getters.get("*"); // wild cords
@@ -115,13 +115,13 @@ export class Reactor<T extends object> {
           loopLen = this.config.lineageTracing ? paths.length : 1,
           oldValue = !this.config.preserveContext ? (object as any)[key] : Reflect.get(object, key, receiver),
           hadKey = !this.config.preserveContext ? key in object : Reflect.has(object, key);
-        this.log(`✏️ [Reactor \`set\` Trap] Initiated for "${keyStr}" on "${paths}"`), CTX.autotracker?.track(fullPath, this, true);
+        this.log(`✏️ [\`set\` Trap] Initiated for "${keyStr}" on [${paths}]`), CTX.autotracker?.track(fullPath, this, true);
         if (this.config.referenceTracking || !indiffable) {
           safeOldValue = oldValue?.[RAW] || oldValue;
           safeValue = value?.[RAW] || value;
           unchanged = this.config.equalityFunction!(safeValue, safeOldValue);
         }
-        if (!indiffable && unchanged && !CTX.usingForce && keyStr !== "length") return this.log(`🔄 [Reactor \`set\` Trap] Unchanged for "${keyStr}" on "${paths}"`), true; // Arrays silently update length before firing set trap, can't risk UI going blind
+        if (!indiffable && unchanged && !CTX.usingForce && keyStr !== "length") return this.log(`🔄 [\`set\` Trap] Unchanged for "${keyStr}" on [${paths}]`), true; // Arrays silently update length before firing set trap, can't risk UI going blind
         if (this.config.set) terminated = (value = this.config.set(object as PathBranchValue<T>, key as PathKey<T>, value, oldValue, receiver, paths)) === TERMINATOR;
         if (this.setters) {
           const wildcords = this.setters.get("*");
@@ -141,9 +141,9 @@ export class Reactor<T extends object> {
             if (!(terminated ||= payload.terminated!)) value = result;
           } // Mediators
         }
-        if (terminated) return this.log(`🛡️ [Reactor \`set\` Trap] Terminated for "${keyStr}" on "${paths}"`), true; // soft rejection if terminated
+        if (terminated) return this.log(`🛡️ [\`set\` Trap] Terminated for "${keyStr}" on [${paths}]`), true; // soft rejection if terminated
         const success = !this.config.preserveContext ? (((object as any)[key] = value), true) : Reflect.set(object, key, value, receiver);
-        if (!success) return this.log(`❌ [Reactor \`set\` Trap] Failed for "${keyStr}" on "${paths}"`), false; // hard rejection if failed
+        if (!success) return this.log(`❌ [\`set\` Trap] Failed for "${keyStr}" on [${paths}]`), false; // hard rejection if failed
         if (this.config.referenceTracking && !unchanged) this.config.smartCloning && this.stamp(object), (this.unlink(safeOldValue, object, keyStr), this.link(safeValue, object, keyStr));
         if (this.watchers || this.listeners)
           for (let i = 0; i < loopLen; i++) {
@@ -163,7 +163,7 @@ export class Reactor<T extends object> {
           loopLen = this.config.lineageTracing ? paths.length : 1,
           oldValue = !this.config.preserveContext ? (object as any)[key] : Reflect.get(object, key, receiver),
           hadKey = !this.config.preserveContext ? key in object : Reflect.has(object, key);
-        this.log(`🗑️ [Reactor \`deleteProperty\` Trap] Initiated for "${keyStr}" on "${paths}"`), CTX.autotracker?.track(fullPath, this, true);
+        this.log(`🗑️ [\`deleteProperty\` Trap] Initiated for "${keyStr}" on [${paths}]`), CTX.autotracker?.track(fullPath, this, true);
         if (this.config.deleteProperty) terminated = (value = this.config.deleteProperty(object as PathBranchValue<T>, key as PathKey<T>, oldValue, receiver, paths)) === TERMINATOR;
         if (this.deleters) {
           const wildcords = this.deleters.get("*");
@@ -182,9 +182,9 @@ export class Reactor<T extends object> {
             if (!(terminated ||= payload.terminated!)) value = result;
           } // Mediators
         }
-        if (terminated) return this.log(`🛡️ [Reactor \`deleteProperty\` Trap] Terminated for "${keyStr}" on "${paths}"`), true; // soft rejection if terminated
+        if (terminated) return this.log(`🛡️ [\`deleteProperty\` Trap] Terminated for "${keyStr}" on [${paths}]`), true; // soft rejection if terminated
         const success = !this.config.preserveContext ? delete (object as any)[key] : Reflect.deleteProperty(object, key);
-        if (!success) return this.log(`❌ [Reactor \`deleteProperty\` Trap] Failed for "${keyStr}" on "${paths}"`), false; // hard rejection if failed
+        if (!success) return this.log(`❌ [\`deleteProperty\` Trap] Failed for "${keyStr}" on [${paths}]`), false; // hard rejection if failed
         if (this.config.referenceTracking) this.config.smartCloning && this.stamp(object), this.unlink(oldValue?.[RAW] || oldValue, object, keyStr);
         if (this.watchers || this.listeners)
           for (let i = 0; i < loopLen; i++) {
@@ -198,7 +198,7 @@ export class Reactor<T extends object> {
         let has = !this.config.preserveContext ? key in object : Reflect.has(object, key);
         const keyStr = String(key),
           fullPath = (path ? path + "." + keyStr : keyStr) as Paths<T>;
-        this.log(`❓ [Reactor \`has\` Trap] Initiated for "${keyStr}" on "${fullPath}"`), CTX.autotracker?.track(fullPath, this);
+        this.log(`❓ [\`has\` Trap] Initiated for "${keyStr}" on '${fullPath}'`), CTX.autotracker?.track(fullPath, this);
         if (this.config.has) has = this.config.has(object as PathBranchValue<T>, key as PathKey<T>, has, this.proxyCache.get(object), fullPath);
         return has;
       },
@@ -206,14 +206,14 @@ export class Reactor<T extends object> {
         let descriptor = !this.config.preserveContext ? Object.getOwnPropertyDescriptor(object, key) : Reflect.getOwnPropertyDescriptor(object, key);
         const keyStr = String(key),
           fullPath = (path ? path + "." + keyStr : keyStr) as Paths<T>;
-        this.log(`📋 [Reactor \`getOwnPropertyDescriptor\` Trap] Initiated for "${keyStr}" on "${fullPath}"`), CTX.autotracker?.track(fullPath, this);
+        this.log(`📋 [\`getOwnPropertyDescriptor\` Trap] Initiated for "${keyStr}" on '${fullPath}'`), CTX.autotracker?.track(fullPath, this);
         if (this.config.getOwnPropertyDescriptor) descriptor = this.config.getOwnPropertyDescriptor(object as PathBranchValue<T>, key as PathKey<T>, descriptor, this.proxyCache.get(object), this.config.lineageTracing ? this.trace(object, keyStr) : fullPath);
         return descriptor;
       },
       ownKeys: (object) => {
         let ownKeys = Reflect.ownKeys(object); // no faster accurate way without Reflect API
         const safePath = (path || "*") as Paths<T>;
-        this.log(`🔑 [Reactor \`ownKeys\` Trap] Initiated on "${safePath}"`), CTX.autotracker?.track(safePath, this);
+        this.log(`🔑 [\`ownKeys\` Trap] Initiated on "${safePath}"`), CTX.autotracker?.track(safePath, this);
         if (this.config.ownKeys) ownKeys = this.config.ownKeys(object as PathBranchValue<T>, ownKeys, this.proxyCache.get(object), safePath);
         return ownKeys;
       },

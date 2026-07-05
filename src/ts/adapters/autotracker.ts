@@ -55,44 +55,47 @@ export class Autotracker<T extends object> {
         if (key === RAW) return this.rtr!.log(`👀 [AutoTracker \`get\` Trap] Peeked at ${object}`), object;
         const keyStr = String(key),
           fullPath = (path ? `${path}.${keyStr}` : keyStr) as WildPaths<T>;
-        return this.rtr!.log(`🔍 [AutoTracker \`get\` Trap] Initiated for "${keyStr}" on "${path}"`), this.track(fullPath), this.proxied(!this.rtr!.config.preserveContext ? (object as any)[key] : Reflect.get(object, key, receiver), fullPath);
+        return this.rtr!.log(`🔍 [AutoTracker \`get\` Trap] Initiated for "${keyStr}" on '${path}'`), this.track(fullPath), this.proxied(!this.rtr!.config.preserveContext ? (object as any)[key] : Reflect.get(object, key, receiver), fullPath);
       },
       has: (object, key) => {
         const keyStr = String(key),
           fullPath = (path ? `${path}.${keyStr}` : keyStr) as WildPaths<T>;
-        return this.rtr!.log(`❓ [AutoTracker \`has\` Trap] Initiated for "${keyStr}" on "${path}"`), this.track(fullPath), !this.rtr!.config.preserveContext ? key in object : Reflect.has(object, key);
+        return this.rtr!.log(`❓ [AutoTracker \`has\` Trap] Initiated for "${keyStr}" on '${path}'`), this.track(fullPath), !this.rtr!.config.preserveContext ? key in object : Reflect.has(object, key);
       },
       getOwnPropertyDescriptor: (object, key) => {
         const keyStr = String(key),
           fullPath = (path ? `${path}.${keyStr}` : keyStr) as WildPaths<T>;
-        return this.rtr!.log(`📋 [AutoTracker \`getOwnPropertyDescriptor\` Trap] Initiated for "${keyStr}" on "${path}"`), this.track(fullPath), !this.rtr!.config.preserveContext ? Object.getOwnPropertyDescriptor(object, key) : Reflect.getOwnPropertyDescriptor(object, key);
+        return this.rtr!.log(`📋 [AutoTracker \`getOwnPropertyDescriptor\` Trap] Initiated for "${keyStr}" on '${path}'`), this.track(fullPath), !this.rtr!.config.preserveContext ? Object.getOwnPropertyDescriptor(object, key) : Reflect.getOwnPropertyDescriptor(object, key);
       },
       ownKeys: (object) => {
         const safePath = (path || "*") as WildPaths<T>;
         return this.rtr!.log(`🔑 [AutoTracker \`ownKeys\` Trap] Initiated on "${safePath}"`), this.track(safePath), Reflect.ownKeys(object); // no faster accurate way without Reflect API
       },
       set: (_, key) => {
-        throw new Error(`🛡️ [AutoTracker \`set\` Trap] Blocked for "${String(key)}" on "${path}"`); // semantic unlike proxy default error
+        throw new Error(`🛡️ [AutoTracker \`set\` Trap] Blocked for "${String(key)}" on '${path}'`); // semantic unlike proxy default error
       },
       deleteProperty: (_, key) => {
-        throw new Error(`🛡️ [AutoTracker \`deleteProperty\` Trap] Blocked for "${String(key)}" on "${path}"`); // semantic unlike proxy default error
+        throw new Error(`🛡️ [AutoTracker \`deleteProperty\` Trap] Blocked for "${String(key)}" on '${path}'`); // semantic unlike proxy default error
       },
       defineProperty: (_, key) => {
-        throw new Error(`🛡️ [AutoTracker \`defineProperty\` Trap] Blocked for "${String(key)}" on "${path}"`); // semantic unlike proxy default error
+        throw new Error(`🛡️ [AutoTracker \`defineProperty\` Trap] Blocked for "${String(key)}" on '${path}'`); // semantic unlike proxy default error
       },
       setPrototypeOf: (_, key) => {
-        throw new Error(`🛡️ [AutoTracker \`setPrototypeOf\` Trap] Blocked for "${String(key)}" on "${path}"`); // semantic unlike proxy default error
+        throw new Error(`🛡️ [AutoTracker \`setPrototypeOf\` Trap] Blocked for "${String(key)}" on '${path}'`); // semantic unlike proxy default error
       },
     });
     return this.proxyCache.set(obj, proxy), proxy;
   }
 
   /** Adds a path to the tracking set. */
-  public track<const P extends WildPaths<T>>(path: P, rtr: Reactor<any> = this.rtr!, prune = false): P {
+  public track<const P extends WildPaths<T>>(path: P, rtr: Reactor<any> = this.rtr!, prune = false, strict = false): P {
     if (!this.isTracking || !path || (this.autortr && this.autortr !== rtr)) return path;
     let paths = this.deps.get(rtr);
     if (!prune && !paths) paths = (this.deps.set(rtr, (paths = new Set())), paths);
-    if (path.startsWith(this.lastPath + ".")) paths!.delete(this.lastPath!);
+    if (path.startsWith(this.lastPath + ".")) {
+      const child = path.slice(this.lastPath!.length + 1);
+      (strict || (!child.includes("Symbol(") && child !== "length" && !/^\d+$/.test(child))) && paths!.delete(this.lastPath!); // #SENSITIVE
+    }
     return !prune && paths!.add((this.lastPath = path)), path;
   }
   /** Removes a path from the tracking set. */

@@ -139,7 +139,7 @@ export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, 
   if (settings.disabled) return false;
   const activeEl = getActiveEl((e.target as Node)?.ownerDocument); // shadow DOM proof
   if ((e.key === " " || e.key === "Enter") && activeEl?.matches("button,input[type='button'],input[type='submit']")) return false;
-  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
+  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable],[role]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
   const combo = stringifyKeyEvent(e),
     { override, block, action, whitelisted } = getTermsForKey(combo, settings);
   if (block) return false;

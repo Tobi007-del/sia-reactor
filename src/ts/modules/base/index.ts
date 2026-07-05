@@ -1,9 +1,7 @@
 import type { Reactor } from "@core/reactor";
 import { getReactor, type Reactive, reactive } from "@core/mixins";
-import type { Paths } from "@defs/obj";
 import { isObj, matchPaths, getPath, setPath, nuke } from "@utils/obj";
 import { guardMethod, guardAllMethods } from "@utils/methd";
-import { NOOP } from "@core/consts";
 import { ReactorModulePathConfig, ReactorModuleConstructor, ReactorModuleId, ModulePaths } from "./types";
 
 /**
@@ -28,6 +26,7 @@ export abstract class BaseReactorModule<T extends object = any, Config extends P
   /** The reactive configuration object for the module, manipulate to change behaviour. */
   public config!: Config extends object ? Reactive<Config> : Config;
   public wired = false;
+  private readonly clups = new Map<ReactorModuleId, (() => void)[]>();
 
   constructor(config?: Config, rtr?: Reactor<T>, state?: State) {
     guardAllMethods(this, this.guard); // Modules can sacrifice memory footprint for error proofing and events devx
@@ -52,10 +51,12 @@ export abstract class BaseReactorModule<T extends object = any, Config extends P
     return this.rids.set((this.deps.set(id, rtr), rtr), id), this.onAttach(rtr, id), this;
   }
   protected onAttach(_rtr: Reactor<any>, _rid?: ReactorModuleId): void {}
-  protected attachPaths(rtr: Reactor<any>, rid: ReactorModuleId, forEach: (rtr: Reactor<any>, path: Paths<any>) => void = NOOP, paths = this.getPaths(rid)) {
+  protected attachPaths(rtr: Reactor<any>, rid: ReactorModuleId, paths = this.getPaths(rid)) {
+    let clups = this.clups.get(rid);
+    if (!clups) this.clups.set(rid, (clups = []));
     for (let i = 0, len = paths.length; i < len; i++) {
       const path = paths[i];
-      forEach(rtr, path), !this.config.disabled ? (this.config.synchronous ? rtr.watch(path, this.handlePathSync, { signal: this.signal }) : rtr.on(path, this.handlePath, this.evtOpts)) : this.config.synchronous ? rtr.nowatch(path, this.handlePathSync) : rtr.off(path, this.handlePath, this.evtOpts);
+      !this.config.disabled ? clups.push(this.config.synchronous ? rtr.watch(path, this.handlePathSync, { signal: this.signal }) : rtr.on(path, this.handlePath, this.evtOpts)) : this.config.synchronous ? rtr.nowatch(path, this.handlePathSync) : rtr.off(path, this.handlePath, this.evtOpts);
     }
   }
 
@@ -90,7 +91,7 @@ export abstract class BaseReactorModule<T extends object = any, Config extends P
   }; // `()=>{}`: needs to be bounded even before initialization
 
   protected handleWhitelist({ currentTarget: { value: paths } }: any): void {
-    for (const [rid, rtr] of this.deps) this.attachPaths(rtr, rid, NOOP, this.getPaths(rid, paths));
+    for (const [rid, rtr] of this.deps) this.cleanup(rid), this.attachPaths(rtr, rid, this.getPaths(rid, paths));
   } // child wires when ready
   private handlePath(e: any, rid = this.rids.get(e.reactor)!): void {
     (!this.config.blacklist || !matchPaths(this.getPaths(rid, this.config.blacklist, true), e.path)) && this.onPath(e, rid);
@@ -98,9 +99,15 @@ export abstract class BaseReactorModule<T extends object = any, Config extends P
   private handlePathSync = (_: any, p: any) => this.handlePath(p);
   protected onPath(_e: any, _rid: ReactorModuleId): void {}
 
-  protected handleSynchronous({ oldValue }: any) {
-    for (const [rid, rtr] of this.deps) this.attachPaths(rtr, rid, (rtr, path) => (oldValue ? rtr.nowatch(path, this.handlePathSync) : rtr.off(path, this.handlePath)));
+  protected handleSynchronous() {
+    for (const [rid, rtr] of this.deps) this.cleanup(rid), this.attachPaths(rtr, rid);
   } // child wires when ready
+
+  private cleanup(rid: ReactorModuleId): void {
+    const clups = this.clups.get(rid);
+    if (clups) for (let i = 0, len = clups.length; i < len; i++) clups[i]();
+    clups && (clups.length = 0);
+  }
 
   /**
    * Path resolution utility for modules, provides automatic reactor id resolution for multi-reactor setups.

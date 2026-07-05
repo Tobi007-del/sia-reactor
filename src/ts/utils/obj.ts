@@ -2,7 +2,7 @@ import { CTX, NIL, INERTIA } from "@core/consts";
 import { ReactorEvent } from "@core/event";
 import type { Pure } from "@core/mixins";
 import { Payload, ReactorMeta } from "@defs/reactor";
-import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue } from "@defs/obj";
+import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue, ChildPaths, MaxDepth, Paths } from "@defs/obj";
 import { transaction, txId } from "@modules/timeTravel/transaction";
 
 export const arrRegex = /^([^\[\]]+)\[(\d+)\]$/;
@@ -355,4 +355,40 @@ export function resetMeta(key: keyof ReactorMeta) {
   delete CTX.meta[key];
   for (const _ in CTX.meta) return;
   CTX.meta = null;
+}
+
+/**
+ * The Master Path Engine: Single-pass, zero-allocation DFS tree extraction. Perfectly mirrors the TS `Paths` and `ChildPaths` generics.
+ * - Root paths: `getPaths(store)`
+ * - Child paths: `getPaths(store, "settings.audio")`
+ * - Next words (typeahead): `getPaths(store, "settings", { depth: 1 })`
+ */
+export function getPaths<T extends object, const S extends string = ".", P extends WildPaths<T, S> = "*", D extends number = MaxDepth>(obj: T, path: P = "*" as P, config: { depth?: D; separator?: S } & typeof CTX.defaults = CTX.defaults): (P extends "*" ? Paths<T, S, D> : ChildPaths<T, P, S, D>)[] {
+  const target = path === "*" ? obj : getPath(obj, path as any, config.separator as S),
+    result: string[] = [],
+    seen = new Set<any>();
+  if (!canHandle(target, config)) return result as any;
+  const walk = (curr: any, currPath: string, depth: number) => {
+    if (seen.has(curr) || depth >= (config.depth ?? 19)) return;
+    seen.add(curr);
+    const keys = config.preserveContext ? Reflect.ownKeys(curr) : Object.keys(curr);
+    for (let i = 0, len = keys.length; i < len; i++) {
+      const key = String(keys[i]),
+        val = (curr as any)[key],
+        newPath = currPath ? `${currPath}${config.separator || "."}${key}` : key;
+      result.push(newPath);
+      try {
+        canHandle(val, config) && walk(val, newPath, depth + 1);
+      } catch (e) {
+        if (e instanceof RangeError) throw e;
+      }
+    }
+    seen.delete(curr); // Backtrack: allow identical object refs across different branches
+  }; // Inline closure maintains state; prepends the exact parent path during the first pass.
+  return walk(target, path === "*" ? "" : path, 0), result as any; // If path is passed, it acts as the initial string prefix for the sub-tree walk.
+}
+
+/** Quick boolean check to see if a path resolves to a final/inert value (Command Execution Gate). */
+export function isLeafPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(obj: T, path: P, config: { separator?: S } & typeof CTX.defaults = CTX.defaults, value = getPath(obj, path, config.separator)): boolean {
+  return path !== "*" && !canHandle(value, config);
 }
