@@ -336,7 +336,7 @@ button:disabled {
 .counter-surface {
   border-radius: 1.35rem;
   padding: 1.2rem;
-  min-height: 11rem;
+  min-height: 9rem;
 }
 
 .counter-card {

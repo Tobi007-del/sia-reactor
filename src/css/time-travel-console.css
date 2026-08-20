@@ -1,4 +1,4 @@
-.tt-console-host {
+.sia-tt-console-host {
   --sia-tt-color: #e26e02;
   --sia-brand-color: rgb(from var(--sia-tt-color) r g b / 1);
   --sia-tt-bg: rgb(from var(--sia-brand-color) calc((r * 0.09) + 6) calc((g * 0.08) + 7) calc((b * 0.1) + 10) / 0.66);
@@ -10,42 +10,42 @@
   position: relative;
 }
 
-.tt-console-host *,
-.tt-console-host *::before,
-.tt-console-host *::after {
+.sia-tt-console-host *,
+.sia-tt-console-host *::before,
+.sia-tt-console-host *::after {
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: var(--sia-brand-color) transparent;
 }
 
-:where(.tt-console-host) *,
-:where(.tt-console-host) *::after,
-:where(.tt-console-host) *::before {
+:where(.sia-tt-console-host) *,
+:where(.sia-tt-console-host) *::after,
+:where(.sia-tt-console-host) *::before {
   padding: 0;
   margin: 0;
 }
 
-.tt-console-host *::selection {
+.sia-tt-console-host *::selection {
   color: currentColor;
   background-color: rgb(from var(--sia-brand-color) r g b / 0.25);
 }
 
-.tt-console-host :is(*:focus-visible, #o#o#o#o#o) {
+.sia-tt-console-host :is(*:focus-visible, #o#o#o#o#o) {
   outline: 1.5px dashed var(--sia-brand-color);
   outline-offset: 1px;
   transition: none;
 }
-.tt-console input[type="range"]:focus-visible {
+.sia-tt-console input[type="range"]:focus-visible {
   outline-offset: 1px;
 }
 
-.tt-console-layer {
+.sia-tt-console-layer {
   inset: 0;
   z-index: 2147483647;
   pointer-events: none;
 }
 
-.tt-console-dock {
+.sia-tt-console-dock {
   position: absolute;
   right: 18px;
   bottom: 18px;
@@ -55,7 +55,7 @@
   pointer-events: auto;
 }
 
-.tt-console-toggle {
+.sia-tt-console-toggle {
   position: relative;
   color: var(--sia-tt-text);
   background: var(--sia-tt-bg-soft);
@@ -68,12 +68,12 @@
   pointer-events: auto;
 }
 
-.tt-console {
+.sia-tt-console {
   position: absolute;
   right: 0;
   bottom: calc(100% + 8px);
   width: min(360px, calc(100vw - 50px));
-  max-height: max(260px, calc(100vh - 50px));
+  max-height: calc(100vh - 50px);
   background: var(--sia-tt-bg);
   border: 1px solid var(--sia-tt-line);
   border-radius: 12px;
@@ -92,7 +92,7 @@
   transition: opacity 160ms ease, transform 180ms ease, visibility 0ms linear;
 }
 
-.tt-console[hidden] {
+.sia-tt-console[hidden] {
   opacity: 0;
   transform: translateY(6px) scale(0.985);
   visibility: hidden;
@@ -101,18 +101,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tt-console,
-  .tt-console[hidden] {
+  .sia-tt-console,
+  .sia-tt-console[hidden] {
     transition: none;
   }
 }
 
-.tt-console .title {
+.sia-tt-console .title {
   color: var(--sia-brand-color);
   font-weight: bold;
 }
 
-.tt-console :is(button, .tt-button) {
+.sia-tt-console :is(button, .sia-tt-button) {
   border: 1px solid var(--sia-tt-line);
   background: var(--sia-tt-bg-soft);
   color: var(--sia-tt-text);
@@ -123,85 +123,85 @@
   cursor: pointer;
 }
 
-.tt-console :is(button, .tt-button):hover {
+.sia-tt-console :is(button, .sia-tt-button):hover {
   border-color: hsl(from var(--sia-brand-color) h calc(s * 0.35) 40% / 0.9);
 }
 
-.tt-console :is(button, .tt-button):disabled {
+.sia-tt-console :is(button, .sia-tt-button):disabled {
   opacity: 0.7;
   cursor: not-allowed;
   color: var(--sia-tt-muted);
 }
 
-.tt-status-row {
+.sia-tt-status-row {
   display: flex;
   align-items: start;
   gap: 8px;
   justify-content: space-between;
 }
 
-.tt-status-row > :is(button, .tt-button) {
+.sia-tt-status-row > :is(button, .sia-tt-button) {
   white-space: nowrap;
 }
 
-.tt-status-box {
+.sia-tt-status-box {
   display: grid;
   gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
-.tt-status-box .muted {
+.sia-tt-status-box .muted {
   margin: 0;
   font-size: 0.75rem;
 }
 
-.tt-filter-row {
+.sia-tt-filter-row {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.tt-filter-row .muted,
-.tt-speed {
+.sia-tt-filter-row .muted,
+.sia-tt-speed {
   min-width: 50px;
   white-space: nowrap;
 }
 
-.tt-row {
+.sia-tt-row {
   display: flex;
   gap: 8px;
   justify-content: center;
   align-items: center;
 }
 
-.tt-console input {
+.sia-tt-console input {
   accent-color: var(--sia-brand-color);
 }
-.tt-console input[type="range"] {
+.sia-tt-console input[type="range"] {
   width: 100%;
   height: 5px;
   border-radius: 8px;
 }
 
-.tt-speed {
+.sia-tt-speed {
   background-color: var(--sia-brand-color);
   border-radius: 8px;
 }
 
-.tt-mini-input {
+.sia-tt-mini-input {
   min-width: 45px;
   max-width: 100px;
   field-sizing: content;
 }
 @supports not (field-sizing: content) {
-  .tt-mini-input {
+  .sia-tt-mini-input {
     width: 45px;
   }
 }
 
-.tt-io {
+.sia-tt-io {
   min-height: 84px;
   max-height: calc((100vh - 318px) / 2);
   resize: vertical;
@@ -213,7 +213,7 @@
   padding: 8px;
 }
 
-.tt-filter-input.tt-io {
+.sia-tt-filter-input.sia-tt-io {
   min-height: 30px;
   height: 30px;
   max-height: 30px;
@@ -223,30 +223,30 @@
   padding-block: 6px;
 }
 
-.tt-filter-input.tt-io::-webkit-scrollbar {
+.sia-tt-filter-input.sia-tt-io::-webkit-scrollbar {
   display: none;
 }
 
-.tt-io::placeholder {
+.sia-tt-io::placeholder {
   color: var(--sia-tt-muted);
 }
 
-.tt-config-row:not(:has(:focus)) > :is(#o, *) {
+.sia-tt-config-row:not(:has(:focus)) > :is(#o, *) {
   color: var(--sia-tt-muted);
   opacity: 0.5;
 }
 
-.tt-check {
+.sia-tt-check {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   font-size: 0.7rem;
 }
-.tt-check input[type="checkbox"] {
+.sia-tt-check input[type="checkbox"] {
   width: 0.65rem;
 }
 
-.tt-footnote {
+.sia-tt-footnote {
   margin: 2px 2px 0;
   font-size: 0.72rem;
   line-height: 1.35;
@@ -255,17 +255,17 @@
   white-space: nowrap;
 }
 
-.tt-stats {
+.sia-tt-stats {
   float: left;
   margin-right: auto;
 }
 
-.tt-footnote a {
+.sia-tt-footnote a {
   color: var(--sia-brand-color);
   text-decoration: none;
   border-bottom: 1px solid var(--sia-tt-line);
 }
 
-.tt-footnote a:hover {
+.sia-tt-footnote a:hover {
   text-decoration: underline;
 }

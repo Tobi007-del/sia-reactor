@@ -1,7 +1,8 @@
 import { CTX, NIL, INERTIA } from "@core/consts";
 import { ReactorEvent } from "@core/event";
 import type { Pure } from "@core/mixins";
-import { Payload, ReactorMeta } from "@defs/reactor";
+import { Payload, Reactor, ReactorMeta } from "@defs/reactor";
+import { getReactor } from "@core/mixins";
 import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue, ChildPaths, MaxDepth, Paths } from "@defs/obj";
 import { transaction, txId } from "@modules/timeTravel/transaction";
 
@@ -43,10 +44,10 @@ export function getPath<T extends object, const S extends string = ".", P extend
       match = key.includes("[") && key.match(arrRegex);
     if (match) {
       const [, key, iStr] = match;
-      if (!Array.isArray(currObj[key])) return undefined!;
+      if (!Array.isArray(currObj[key]) || !(key in currObj)) return currObj[key];
       currObj = currObj[key][Number(iStr)];
     } else {
-      if (!isObj<Record<string, any>>(currObj)) return undefined!;
+      if (!isObj<Record<string, any>>(currObj) || !(key in currObj)) return currObj[key];
       currObj = currObj[key];
     }
   }
@@ -183,10 +184,12 @@ export interface FanoutOptionsTuple extends Partial<Record<(typeof fanoutOptsArr
   depth?: number | boolean;
   /** Whether to assign arrays as a whole and only touch `.length` for common cases. Only works with the `path` parameter overload or in nested levels.
    * Arrays can lead to unnecessary work as more often than not, you won't be watching index paths but waiting on the parent bubble instead.
-   * If you happen to be watching, it might be more optimal to re-set it yourself if it's only a few indexes or just turn set this to `false`. */
+   * If you happen to be watching, it might be more optimal to re-set it yourself if it's only a few indexes or just set this to `false`. @default `true` */
   atomic?: boolean;
   /** Whether to skip `undefined` values during fanout. @default  `false`. */
-  skipUndefined?: boolean;
+  skipUndef?: boolean;
+  /** Whether to clone before setting any final values, prevents unintended reference sharing across the state tree. @default  `false`. */
+  cloneSets?: boolean;
   /** A label for the transaction that will be started, useful for debugging and tracking. @default  `Fanout -> "${path}"` : `Fanout`} (Tx ${CTX.txId})`. */
   txLabel?: string;
 }
@@ -210,25 +213,26 @@ export function fanout(a: any, b?: any, c?: any, d?: any): void {
     [state, path, olds, news, opts, type] = isEvPd ? [a.root, a.currentTarget.path, a.currentTarget.oldValue, a.currentTarget.value, b || NIL, a.type] : isPath ? [a, b, getPath(a, b), c, d || NIL, undefined] : [undefined, undefined, a, b, c || NIL, undefined],
     target = isEvPd ? getPath(a.root, a.currentTarget.path) : isPath ? getPath(state, path) : olds; // to avoid stale refs during write-walk
   if ((isEvPd && type !== "set" && type !== "delete") || !target || !canHandle(news, opts)) return;
+  const { merge = false, depth, atomic = true, skipUndef = false, cloneSets = false, txLabel } = opts;
   const func = () => {
     const walk = (target: any, obj: any, depth = isEvPd ? 1 : Infinity, keys = Object.keys(obj)) => {
       for (let i = 0, len = keys.length; i < len; i++) {
         const key = keys[i],
           val = obj[key];
         try {
-          if ((opts.atomic ?? true) && Array.isArray(val)) (target[key] = val), (target[key].length = target[key].length); // ping commoners
-          else depth > 1 && canHandle(val, opts) ? walk((target[key] ||= {}), val, depth - 1) : (!opts.skipUndefined || val !== undefined) && (target[key] = val);
+          if (atomic && Array.isArray(val)) (target[key] = cloneSets ? deepClone(val) : val), (target[key].length = target[key].length); // ping commoners
+          else depth > 1 && canHandle(val, opts) ? walk((target[key] ||= {}), val, depth - 1) : (!skipUndef || val !== undefined) && (target[key] = cloneSets ? deepClone(val) : val);
         } catch (e) {
           if (e instanceof RangeError) throw e; // internals can skip, not users
         } // call a spade a spade and just skip, no descriptor gymanstics
       }
     };
-    if ((opts.atomic ?? true) && Array.isArray(news) && isPath) setPath(state, path, news), (getPath(state, path).length = news.length); // ping commoners
-    else walk(target, opts.merge ? mergeObjs(olds, news, opts) : news, opts.depth === true ? Infinity : opts.depth);
+    if (atomic && Array.isArray(news) && isPath) setPath(state, path, cloneSets ? deepClone(news) : news), (getPath(state, path).length = news.length); // ping commoners
+    else walk(target, merge ? mergeObjs(olds, news, opts) : news, depth === true ? Infinity : depth);
   };
-  force(() => transaction(func, opts.txLabel ?? `${path ? `Fanout -> '${path}'` : `Fanout`} (Tx ${txId + 1})`), isEvPd); // if event or payload, already written values can bypass equality checks
+  force(() => transaction(func, txLabel ?? `${path ? `Fanout -> '${path}'` : `Fanout`} (Tx ${txId + 1})`), CTX.usingForce || isEvPd); // if event or payload, already written values can bypass equality checks
 }
-export const fanoutOptsArr = ["merge", "depth", "atomic", "skipUndefined"] as const;
+export const fanoutOptsArr = ["merge", "depth", "atomic", "skipUndef"] as const;
 
 /**
  * Executes a task while forcing all reactive writes to bypass equality checks.
@@ -247,16 +251,16 @@ export function force<T>(task: () => T, bool = true): T {
 }
 
 /**
- * Deep-merges object-like values, does necessary checks so use without doubts. Only `o2` keys are checked when `skipUndefined` is true.
+ * Deep-merges object-like values, does necessary checks so use without doubts. Only `o2` keys are checked when `skipUndef` is true.
  * @example
  * const next = mergeObjs({ user: { name: "Kosi" } }, { user: { role: "admin" } }); // { ...o1, ...o2 } // o2 over o1 and deep!
  */
-export function mergeObjs<T1 extends object, T2 extends object>(o1?: T1 | null, o2?: T2 | null, config?: { crossRealms?: boolean; skipUndefined?: boolean }, pojocheck?: boolean): DeepMerge<T1, T2>;
+export function mergeObjs<T1 extends object, T2 extends object>(o1?: T1 | null, o2?: T2 | null, config?: { crossRealms?: boolean; skipUndef?: boolean }, pojocheck?: boolean): DeepMerge<T1, T2>;
 export function mergeObjs(o1?: any, o2?: any, config = NIL, pojocheck = true): any {
   if (pojocheck && (!isPOJO(o1 || NIL, config) || !isPOJO(o2 || NIL, config))) return o2;
   (o1 ||= {}), (o2 ||= {});
-  const merged = config.skipUndefined ? { ...o1 } : { ...o1, ...o2 };
-  if (config.skipUndefined) {
+  const merged = config.skipUndef ? { ...o1 } : { ...o1, ...o2 };
+  if (config.skipUndef) {
     const keys = Object.keys(o1);
     for (let i = 0, len = keys.length; i < len; i++) {
       const key = keys[i],
@@ -391,4 +395,39 @@ export function getPaths<T extends object, const S extends string = ".", P exten
 /** Quick boolean check to see if a path resolves to a final/inert value (Command Execution Gate). */
 export function isLeafPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(obj: T, path: P, config: { separator?: S } & typeof CTX.defaults = CTX.defaults, value = getPath(obj, path, config.separator)): boolean {
   return path !== "*" && !canHandle(value, config);
+}
+
+/**
+ * Creates a two-way, array-atomic, echo-proof sync bridge between two S.I.A Reactors. Uses a synchronous origin lock to prevent infinite echo loops.
+ * On setup, `rA` hydrates `rB` at `prefixB` with a deep clone of its current state at `prefixA` (primary drives initial truth).
+ * @param rA Primary reactor — source of truth. Its `prefixA` slice seeds `rB.prefixB` on setup.
+ * @param rB Secondary reactor — the wider store (e.g. `ctlr.config`). Holds the primary at a named path.
+ * @param prefixA Path prefix on `rA` to watch and translate. Use `""` for root.
+ * @param prefixB Path on `rB` that maps to `rA`. Defaults to `""` (root).
+ * @param signal Optional `AbortSignal` to tear down both watchers automatically.
+ * @returns Cleanup function that removes both watchers.
+ * @example
+ * const unsync = createReactorSync(module.config, ctlr.config, "", "settings.persist", signal); // module.config root <-> ctlr.config.settings.persist
+ * @example
+ * const unsync = createReactorSync(timeline.config, ctlr.config, "", "settings.controlPanel.timeline"); // timeline.config root <-> ctlr.config.settings.controlPanel.timeline
+ * unsync(); // or let signal do it
+ */
+export function createReactorSync(rA: Reactor<any> | object, rB: Reactor<any> | object, prefixA: string, prefixB = "", signal?: AbortSignal): () => void {
+  const rtrA = getReactor(rA, true),
+    rtrB = getReactor(rB, true);
+  let origin: 0 | 1 | null = null; // 0 = A fired, 1 = B fired
+  const sync = (src: 0 | 1, dest: any, srcP: string, destP: string) => (val: any, payload: Payload<any, "*">) => {
+    if (origin === (src ^ 1)) return; // echo guard
+    const { path, object: obj, key } = payload.target;
+    if (srcP && path !== srcP && !path.startsWith(srcP + ".")) return; // boundary check
+    const isArr = Array.isArray(obj),
+      origP = isArr ? path.slice(0, -((key as string).length + 1)) : path, // Array trap: forward the whole array instead of an index-keyed object
+      syncP = origP === srcP ? "" : srcP ? origP.slice(srcP.length + 1) : origP;
+    (origin = src), setPath(dest, (destP ? (syncP ? `${destP}.${syncP}` : destP) : syncP || "*") as any, isArr ? deepClone(obj) : val), (origin = null);
+  };
+  const initA = prefixA ? getPath(rtrA.core, prefixA as any) : rtrA.core; // primary hydrates secondary on setup
+  if (initA !== undefined) fanout(rtrB.core, (prefixB || "*") as any, initA, { depth: 1, cloneSets: true, txLabel: `ReactorSync: ${prefixA}^ <-> ${prefixB}` });
+  const clupA = rtrA.watch("*", sync(0, rtrB.core, prefixA, prefixB), { signal }),
+    clupB = rtrB.watch("*", sync(1, rtrA.core, prefixB, prefixA), { signal });
+  return () => (clupA(), clupB());
 }

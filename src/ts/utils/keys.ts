@@ -36,7 +36,7 @@ export const KEYS_BLOCKS = ["Ctrl+Tab", "Ctrl+Shift+Tab", "Ctrl+PageUp", "Ctrl+P
  */
 export function parseKeyCombo(combo: string): KeyStruct {
   const parts = cleanKeyCombo(combo).toLowerCase().split("+");
-  return { ctrlKey: parts.includes("ctrl"), shiftKey: parts.includes("shift"), altKey: parts.includes("alt"), metaKey: parts.includes("meta") || parts.includes("cmd"), key: parts.find((p) => !["ctrl", "shift", "alt", "meta", "cmd"].includes(p)) || "" };
+  return { ctrlKey: parts.includes("ctrl"), shiftKey: parts.includes("shift"), altKey: parts.includes("alt"), metaKey: parts.includes("meta") || parts.includes("cmd"), key: parts.find((p) => !/^(ctrl|shift|alt|meta|cmd)$/.test(p)) || "" };
 }
 
 /**
@@ -161,9 +161,9 @@ export const formatKeyForDisplay = (combo: string | string[] = ""): string => ` 
  * @param keyShortcuts Action to combo(s) map.
  * @returns Action to display-label map.
  */
-export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string | string[]> = {}): Record<string, string> {
+export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string | string[]> = {}, formatter = formatKeyForDisplay): Record<string, string> {
   const shortcuts: Record<string, string> = {};
-  for (const action of Object.keys(keyShortcuts)) shortcuts[action] = formatKeyForDisplay(keyShortcuts[action]);
+  for (const action of Object.keys(keyShortcuts)) shortcuts[action] = formatter(keyShortcuts[action]);
   return shortcuts;
 }
 

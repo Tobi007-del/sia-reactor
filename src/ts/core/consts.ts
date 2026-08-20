@@ -29,10 +29,14 @@ export const EVT_OPTS = { LISTENER: ["capture", "depth", "once", "signal", "init
 export const NIL = Object.freeze({}) as any; // empty obj to escape any optional chain overhead
 /** Shared no-operation function. */
 export const NOOP = () => {}; // no operation function to escape optional chain overhead
-/** Global context object for sharing state across the reactor runtime. */
-export const CTX = {
+
+let isDevEnv = false;
+try {
+  isDevEnv = process.env.NODE_ENV !== "production";
+} catch (e) {}
+const CTX_BUILD = {
   /** Flag indicating whether the application is running in development mode. */
-  isDevEnv: "undefined" !== typeof process ? process.env.NODE_ENV !== "production" : true,
+  isDevEnv,
   /** Flag indicating whether an operation is bypassing checks so reactors can allow all writes. */
   usingForce: false,
   /** Active `Autotracker` instance, override for automatic dependency collection on `Reactor` traps. */
@@ -51,3 +55,6 @@ export const CTX = {
     batchingFunction: RTR_BATCH,
   } as Partial<ReactorBuild<any>>,
 };
+
+/** Global context object for sharing state across the reactor runtime. */
+export const CTX: typeof CTX_BUILD = ((globalThis as any)[Symbol.for("S.I.A_CTX")] ??= CTX_BUILD);

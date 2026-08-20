@@ -24,7 +24,7 @@ export interface TimeTravelConsoleConfig {
   /** Initial open state applied when the overlay is created. */
   startOpen: boolean;
   /** Container element that owns the overlay layer and dock. */
-  container: HTMLElement;
+  container?: HTMLElement;
 }
 
 /**
@@ -47,16 +47,16 @@ export class TimeTravelConsole {
    * @param time TimeTravel module instance that owns timeline operations.
    * @param build Optional initial overlay config overrides.
    */
-  constructor(time: TimeTravelModule, build: Partial<TimeTravelConsoleConfig> = {}) {
+  constructor(time: TimeTravelModule, build: Partial<TimeTravelConsoleConfig> = { devOnly: true }) {
     this.time = time;
     this.config = reactive({ title: `Time Travel Console ${(this.index = ++TimeTravelConsole.count)}`, ...build } as TimeTravelConsoleConfig);
     this.state.open = !!this.config.startOpen;
     let wlLive = false,
       blLive = false;
     const s = this.time.state,
-      host = (this.host = createEl("div", { className: "tt-console-host" })),
-      toggle = createEl("button", { className: "tt-console-toggle", type: "button", onclick: () => (this.state.open = !this.state.open) }),
-      panel = createEl("aside", { className: "tt-console", ariaLabel: "time travel overlay" }),
+      host = (this.host = createEl("div", { className: "sia-tt-console-host" })),
+      toggle = createEl("button", { className: "sia-tt-console-toggle", type: "button", onclick: () => (this.state.open = !this.state.open) }),
+      panel = createEl("aside", { className: "sia-tt-console", ariaLabel: "time travel overlay" }),
       title = createEl("div", { className: "title" }),
       frame = createEl("span", { className: "muted" }),
       clrHistory = createEl("button", { textContent: `Clear History${formatKFD(keys.shortcuts!.clrHistory)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clrHistory, false), onclick: () => (this.time.clear(), (this.state.import = "")) }),
@@ -70,34 +70,34 @@ export class TimeTravelConsole {
       exp = createEl("button", { textContent: `Export${formatKFD(keys.shortcuts!.export)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.export, false), onclick: () => (this.state.import = this.time.export(null, 2)) }),
       imp = createEl("button", { textContent: `Import${formatKFD(keys.shortcuts!.import)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.import, false), onclick: () => this.state.import.trim().length && this.time.import(this.state.import) }),
       clr = createEl("button", { textContent: `Clear${formatKFD(keys.shortcuts!.clear)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clear, false), onclick: () => (this.state.import = "") }),
-      payload = createEl("textarea", { className: "tt-io", readOnly: true, placeholder: "current payload json", title: "Current History Entry" }),
-      io = createEl("textarea", { className: "tt-io", placeholder: "timeline payload json", title: "Time History", oninput: () => (this.state.import = io.value) }),
-      foot = createEl("p", { className: "tt-footnote", innerHTML: "<span>Want this in your app? </span>" }),
+      payload = createEl("textarea", { className: "sia-tt-io", readOnly: true, placeholder: "current payload json", title: "Current History Entry" }),
+      io = createEl("textarea", { className: "sia-tt-io", placeholder: "timeline payload json", title: "Time History", oninput: () => (this.state.import = io.value) }),
+      foot = createEl("p", { className: "sia-tt-footnote", innerHTML: "<span>Try this in your app? </span>" }),
       link = createEl("a", { target: "_blank", rel: "noreferrer noopener", textContent: "sia-reactor", href: "https://www.npmjs.com/package/sia-reactor" }),
-      box = createEl("div", { className: "tt-status-box" }),
-      status = createEl("div", { className: "tt-status-row" }),
-      filters = createEl("div", { className: "tt-status-row" }),
-      filterBox = createEl("div", { className: "tt-status-box" }),
+      box = createEl("div", { className: "sia-tt-status-box" }),
+      status = createEl("div", { className: "sia-tt-status-row" }),
+      filters = createEl("div", { className: "sia-tt-status-row" }),
+      filterBox = createEl("div", { className: "sia-tt-status-box" }),
       whitelistLabel = createEl("span", { className: "muted", textContent: "Whitelist:" }),
       blacklistLabel = createEl("span", { className: "muted", textContent: "Blacklist:" }),
-      whitelist = createEl("input", { className: "tt-filter-input tt-io", placeholder: 'a.b, c.d or {"0":["a.b"]}', title: "Whitelist paths", onfocus: () => (wlLive = true), onblur: () => ((wlLive = false), (whitelist.value = formatPaths(this.time.config.whitelist, "*"))), oninput: (_, parsed: any = parsePaths(whitelist.value)) => parsed !== null && (this.time.config.whitelist = parsed) }),
-      blacklist = createEl("input", { className: "tt-filter-input tt-io", placeholder: 'a.b, c.d or {"0":["a.b"]}', title: "Blacklist paths", onfocus: () => (blLive = true), onblur: () => ((blLive = false), (blacklist.value = formatPaths(this.time.config.blacklist, ""))), oninput: (_, parsed: any = parsePaths(blacklist.value, true)) => parsed !== null && (this.time.config.blacklist = parsed) }),
-      speed = createEl("select", { className: "tt-speed", title: "Playback Speed", onchange: () => (this.time.config.playbackRate = Number(speed.value)) }),
-      stride = createEl("input", { className: "tt-stride tt-button tt-mini-input", type: "number", min: "1", title: "Skip Stride i.e. how many steps count as one unit", oninput: () => (this.state.stride = Math.max(1, Number(stride.value) || 1)) }),
-      stats = createEl("span", { className: "tt-stats" }),
-      limit = createEl("input", { className: "tt-limit tt-mini-input tt-button", type: "number", min: "1", title: "Maximum number of history entries kept in memory before older entries are discarded.", oninput: () => (this.time.config.limit = Math.max(1, Number(limit.value) || 1)) }),
-      delay = createEl("input", { className: "tt-delay tt-mini-input tt-button", type: "number", min: "0", step: "50", title: "Maximum playback delay between timeline frames in milliseconds.", oninput: () => (this.time.config.maxPlaybackDelay = Math.max(0, Number(delay.value) || 0)) }),
-      read = createEl("label", { className: "tt-check", title: "When recording intent mutations, read previous values from the matching state path instead of the intent path. Useful for accurate undo reconstruction of intent-driven flows." }),
+      whitelist = createEl("input", { className: "sia-tt-filter-input sia-tt-io", placeholder: 'a.b, c.d or {"0":["a.b"]}', title: "Whitelist paths", onfocus: () => (wlLive = true), onblur: () => ((wlLive = false), (whitelist.value = formatPaths(this.time.config.whitelist, "*"))), oninput: (_, parsed: any = parsePaths(whitelist.value)) => parsed !== null && (this.time.config.whitelist = parsed) }),
+      blacklist = createEl("input", { className: "sia-tt-filter-input sia-tt-io", placeholder: 'a.b, c.d or {"0":["a.b"]}', title: "Blacklist paths", onfocus: () => (blLive = true), onblur: () => ((blLive = false), (blacklist.value = formatPaths(this.time.config.blacklist, ""))), oninput: (_, parsed: any = parsePaths(blacklist.value, true)) => parsed !== null && (this.time.config.blacklist = parsed) }),
+      speed = createEl("select", { className: "sia-tt-speed", title: "Playback Speed", onchange: () => (this.time.config.playbackRate = Number(speed.value)) }),
+      stride = createEl("input", { className: "sia-tt-stride sia-tt-button sia-tt-mini-input", type: "number", min: "1", title: "Skip Stride i.e. how many steps count as one unit", oninput: () => (this.state.stride = Math.max(1, Number(stride.value) || 1)) }),
+      stats = createEl("span", { className: "sia-tt-stats" }),
+      limit = createEl("input", { className: "sia-tt-limit sia-tt-mini-input sia-tt-button", type: "number", min: "1", title: "Maximum number of history entries kept in memory before older entries are discarded.", oninput: () => (this.time.config.limit = Math.max(1, Number(limit.value) || 1)) }),
+      delay = createEl("input", { className: "sia-tt-delay sia-tt-mini-input sia-tt-button", type: "number", min: "0", step: "50", title: "Maximum playback delay between timeline frames in milliseconds.", oninput: () => (this.time.config.maxPlaybackDelay = Math.max(0, Number(delay.value) || 0)) }),
+      read = createEl("label", { className: "sia-tt-check", title: "When recording intent mutations, read previous values from the matching state path instead of the intent path. Useful for accurate undo reconstruction of intent-driven flows." }),
       readBox = createEl("input", { type: "checkbox", checked: !!this.time.config.mirrorReads, onchange: () => (this.time.config.mirrorReads = readBox.checked) }),
-      write = createEl("label", { className: "tt-check", title: "During playback and teleportation, mirror state writes into matching intent paths to re-enact the recorded history. Useful for accurate reconstruction of the whole session." }),
+      write = createEl("label", { className: "sia-tt-check", title: "During playback and teleportation, mirror state writes into matching intent paths to re-enact the recorded history. Useful for accurate reconstruction of the whole session." }),
       writeBox = createEl("input", { type: "checkbox", checked: !!this.time.config.mirrorWrites, onchange: () => (this.time.config.mirrorWrites = writeBox.checked) }),
-      filterRow1 = createEl("div", { className: "tt-filter-row" }),
-      filterRow2 = createEl("div", { className: "tt-filter-row" }),
-      row1 = createEl("div", { className: "tt-row" }),
-      row2 = createEl("div", { className: "tt-row" }),
-      row3 = createEl("div", { className: "tt-row" }),
-      row4 = createEl("div", { className: "tt-row" }),
-      row5 = createEl("div", { className: "tt-row tt-config-row" });
+      filterRow1 = createEl("div", { className: "sia-tt-filter-row" }),
+      filterRow2 = createEl("div", { className: "sia-tt-filter-row" }),
+      row1 = createEl("div", { className: "sia-tt-row" }),
+      row2 = createEl("div", { className: "sia-tt-row" }),
+      row3 = createEl("div", { className: "sia-tt-row" }),
+      row4 = createEl("div", { className: "sia-tt-row" }),
+      row5 = createEl("div", { className: "sia-tt-row sia-tt-config-row" });
     speed.append(...[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 8, 16, 32].map((v) => createEl("option", { value: String(v), textContent: `${v}x` })));
     status.append((box.append(frame), box), clrHistory);
     filters.append((filterBox.append((filterRow1.append(whitelistLabel, whitelist), filterRow1), (filterRow2.append(blacklistLabel, blacklist), filterRow2)), filterBox));
@@ -160,9 +160,9 @@ export class TimeTravelConsole {
 function getDock(container?: HTMLElement) {
   const host = container && container !== document.documentElement ? container : document.body;
   if (host !== document.body && getComputedStyle(host).position === "static") host.style.position = "relative";
-  const layer = host.querySelector(":scope > .tt-console-layer") || createEl("div", { className: "tt-console-layer" }, undefined, { position: host === document.body ? "fixed" : "absolute" });
+  const layer = host.querySelector(":scope > .sia-tt-console-layer") || createEl("div", { className: "sia-tt-console-layer" }, undefined, { position: host === document.body ? "fixed" : "absolute" });
   if (layer.parentElement !== host) host.appendChild(layer);
-  const dock = layer.querySelector(":scope > .tt-console-dock") || createEl("div", { className: "tt-console-dock" });
+  const dock = layer.querySelector(":scope > .sia-tt-console-dock") || createEl("div", { className: "sia-tt-console-dock" });
   return dock.parentElement !== layer && layer.appendChild(dock), dock;
 }
 function formatPaths(paths: unknown, emptyText: string): string {

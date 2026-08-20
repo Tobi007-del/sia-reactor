@@ -1,5 +1,35 @@
 # sia-reactor
 
+## 0.0.40
+
+### Patch Changes
+
+- Supports cloning final set operations in fanouts nd during atomic reactor sync
+
+## 0.0.39
+
+### Patch Changes
+
+- Standardized class prefixes
+
+## 0.0.38
+
+### Patch Changes
+
+- Context added to global scope
+
+## 0.0.37
+
+### Patch Changes
+
+- Slight imporovments
+
+## 0.0.36
+
+### Patch Changes
+
+- improvements
+
 ## 0.0.35
 
 ### Patch Changes

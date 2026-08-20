@@ -4,7 +4,7 @@ export { Reactor } from "@core/reactor";
 
 export { ReactorEvent } from "@core/event";
 
-export { methods, reactive, inert, live, isInert, intent, state, isIntent, volatile, stable, isVolatile, getRaw, getVersion, getSnapshotVersion } from "@core/mixins";
+export { methods, reactive, inert, live, isInert, intent, state, isIntent, volatile, stable, isVolatile, getRaw, getVersion, getSnapshotVersion, getReactor } from "@core/mixins";
 
 export type { Inert, Live, Intent, State, Volatile, Stable, Target, Payload, DirectPayload, UpdatePayload, REvent, Getter, Setter, Deleter, Watcher, Listener, GetterRecord, SetterRecord, DeleterRecord, WatcherRecord, ListenerRecord, SyncOptionsTuple, SyncOptions, ListenerOptionsTuple, ListenerOptions, EffectOptions, ReactorBuild } from "@defs/reactor";
 

@@ -9,10 +9,6 @@ function CounterCard({ label, count, renders }: { label: string; count: number; 
     <section className="counter-surface">
       <div className="title">{label}</div>
       <div className="count">{count}</div>
-      <div className="row">
-        <button onClick={decrementCount}>-1</button>
-        <button onClick={incrementCount}>+1</button>
-      </div>
       <div className="muted">renders: {renders}</div>
     </section>
   );

@@ -98,11 +98,11 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     value && this.adapter?.remove(this.config.key);
   }
 
-  protected hydrate(entry: any, rtr: Reactor<any>, rid: ReactorModuleId = this.rids.get(rtr)!, { depth, merge = true, atomic, skipUndefined } = parseEvtOpts(this.config.fanout, fanoutOptsArr, "depth"), tick = true): void {
+  protected hydrate(entry: any, rtr: Reactor<any>, rid: ReactorModuleId = this.rids.get(rtr)!, { depth, merge = true, atomic, skipUndef } = parseEvtOpts(this.config.fanout, fanoutOptsArr, "depth"), tick = true): void {
     if (!entry) return;
     const whites = this.getPaths(rid),
       blacks = this.getPaths(rid, this.config.blacklist, true),
-      set = (p: any, curr: any, prev: any) => (depth ? (fanout as any) : setPath)(rtr.core, p, merge ? mergeObjs(curr, prev, rtr.config) : prev, depth ? { depth, atomic, skipUndefined, crossRealms: rtr.config.crossRealms } : undefined); // if sync, merge directly, else fanout for granularity
+      set = (p: any, curr: any, prev: any) => (depth ? (fanout as any) : setPath)(rtr.core, p, merge ? mergeObjs(curr, prev, rtr.config) : prev, depth ? { depth, atomic, skipUndef, crossRealms: rtr.config.crossRealms } : undefined); // if sync, merge directly, else fanout for granularity
     let ticks = this.tickMap.get(rid);
     for (let i = 0, len = blacks.length; i < len; i++) deletePath(entry, blacks[i]);
     for (let i = 0, len = whites.length; i < len; i++) {

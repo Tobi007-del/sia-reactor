@@ -1,4 +1,4 @@
-export { arrRegex, isObj, isPOJO, canHandle, setPath, getPath, deletePath, hasPath, parsePathObj, matchPaths, getDepth, parseEvtOpts, type FanoutOptionsTuple, fanout, fanoutOptsArr, force, mergeObjs, getTrailRecords, deepClone, nuke, withMeta, resetMeta, getPaths, isLeafPath } from "@utils/obj";
+export { arrRegex, isObj, isPOJO, canHandle, setPath, getPath, deletePath, hasPath, parsePathObj, matchPaths, getDepth, parseEvtOpts, type FanoutOptionsTuple, fanout, fanoutOptsArr, force, mergeObjs, getTrailRecords, deepClone, nuke, withMeta, resetMeta, getPaths, isLeafPath, createReactorSync } from "@utils/obj";
 
 export { clamp } from "@utils/num";
 
