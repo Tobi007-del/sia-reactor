@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.41
+
+### Patch Changes
+
+- Slight optimizations
+
 ## 0.0.40
 
 ### Patch Changes

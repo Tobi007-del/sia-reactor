@@ -38,9 +38,10 @@ export function assignEl(el?: HTMLElement | null, props?: Record<string, unknown
 
 /** Get the currently active element, traversing into shadow roots if necessary.
  * @param root Root node to start searching from, defaults to the main document.
+ * @param noBody If `true`, will return `null` if the active element is the body element.
  * @returns The active element or null if none found.
  */
-export function getActiveEl(root?: Document | ShadowRoot | null): Element | null {
+export function getActiveEl(root?: Document | ShadowRoot | null, noBody = true): Element | null {
   const activeEl = (root ?? document).activeElement;
-  return !activeEl ? null : activeEl.shadowRoot ? getActiveEl(activeEl.shadowRoot) : activeEl;
+  return !activeEl || (noBody && activeEl === document.body) ? null : activeEl.shadowRoot ? getActiveEl(activeEl.shadowRoot) : activeEl;
 }

@@ -12,9 +12,9 @@ import { BaseReactorModule as ReactorModule, ReactorModuleId } from "@modules/ba
  * avoided myth of reverse while loops so new CPU's don't waste memory on a forward l1 Cache miss
  * 3. moved any logic involving `?.` or `??` outside repetitions to not accumulate the ~5x slowdown
  * 4. `?.` in cases where only other option was `&&` | `||` cuz `?.` benchmarks were a bit faster
- * 5. adopted nooping strategy since JIT compiler makes it 2x faster than other alternatives
- * 6. no unorthodox string deduplication or caching since string interning is native to JS
- * 7. it's all progressive: light at creation then grows during the user of desired features
+ * 5. adopted nooping strategy since JIT compiler makes it up to 2x faster than other alternatives
+ * 6. no unorthodox string deduplication or caching since string interning is now native to JS
+ * 7. it's all progressive: light at creation then grows during the use of all desired features
  * 8. Reflect API was avoided, incurs an ~8x slowdown; mediation layer is even powerful enough
  * 9. Core's Class Syntax over global functional closures for instance's lighter memory footprint
  * 10. Avoided object pooling since V8 excels at generational GC for short-lived payloads so no
