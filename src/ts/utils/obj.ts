@@ -3,10 +3,10 @@ import { ReactorEvent } from "@core/event";
 import type { Pure } from "@core/mixins";
 import { Payload, Reactor, ReactorMeta } from "@defs/reactor";
 import { getReactor } from "@core/mixins";
-import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue, ChildPaths, MaxDepth, Paths } from "@defs/obj";
+import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue, ChildPaths, MaxDepth, Paths, DeepPartial } from "@defs/obj";
 import { transaction, txId } from "@modules/timeTravel/transaction";
 
-export const arrRegex = /^([^\[\]]+)\[(\d+)\]$/;
+export let arrRegex = /^([^\[\]]+)\[(\d+)\]$/;
 
 // Type Guards
 
@@ -35,12 +35,12 @@ export function canHandle(obj: any, config: { crossRealms?: boolean; preserveCon
  * const state = { user: { profile: { name: "Kosi" } } };
  * const name = getPath(state, "user.profile.name");
  */
-export function getPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(source: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): PathValue<T, P, S> {
+export function getPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(source: T, key: P, separator: S = "." as S, keyFn?: (p: string) => string): PathValue<T, P, S> {
   if (key === "*") return source as any;
   const keys = key.split(separator);
   let currObj: any = source;
   for (let i = 0, len = keys.length; i < len; i++) {
-    const key = keyFunc ? keyFunc(keys[i]) : keys[i],
+    const key = keyFn ? keyFn(keys[i]) : keys[i],
       match = key.includes("[") && key.match(arrRegex);
     if (match) {
       const [, key, iStr] = match;
@@ -63,11 +63,11 @@ export function getPath<T extends object, const S extends string = ".", P extend
  * const state = { users: [] as Array<{ name?: string }> };
  * setPath(state, "users.0.name", "Kosi"); // use `[n]` for arrays if uncertain so the indexes are not treated as object keys, i.e. { "0": { name: "Kosi" } } instead of { users: [ { name: "Kosi" } ] }
  */
-export function setPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, value: PathValue<T, P, S>, separator: S = "." as S, keyFunc?: (p: string) => string): void {
+export function setPath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, value: PathValue<T, P, S>, separator: S = "." as S, keyFn?: (p: string) => string): void {
   if (key === "*") return Object.assign(target, value);
   const keys = key.split(separator);
   for (let currObj: any = target, i = 0, len = keys.length; i < len; i++) {
-    const key = keyFunc ? keyFunc(keys[i]) : keys[i],
+    const key = keyFn ? keyFn(keys[i]) : keys[i],
       match = key.includes("[") && key.match(arrRegex);
     if (match) {
       const [, key, iStr] = match;
@@ -87,7 +87,7 @@ export function setPath<T extends object, const S extends string = ".", P extend
  * const state = { user: { profile: { name: "Kosi" } } };
  * deletePath(state, "user.profile.name");
  */
-export function deletePath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): void {
+export function deletePath<T extends object, const S extends string = ".", P extends WildPaths<T, S> = WildPaths<T, S>>(target: T, key: P, separator: S = "." as S, keyFn?: (p: string) => string): void {
   if (key === "*") {
     const keys = Object.keys(target);
     for (let i = 0, len = keys.length; i < len; i++) delete (target as any)[keys[i]];
@@ -95,7 +95,7 @@ export function deletePath<T extends object, const S extends string = ".", P ext
   }
   const keys = key.split(separator);
   for (let currObj: any = target, i = 0, len = keys.length; i < len; i++) {
-    const key = keyFunc ? keyFunc(keys[i]) : keys[i],
+    const key = keyFn ? keyFn(keys[i]) : keys[i],
       match = key.includes("[") && key.match(arrRegex);
     if (match) {
       const [, key, iStr] = match;
@@ -116,11 +116,11 @@ export function deletePath<T extends object, const S extends string = ".", P ext
  * const state = { user: { profile: { name: "Kosi" } } };
  * const ok = hasPath(state, "user.profile.name"); // default loose typing due to it's usecase
  */
-export function hasPath<T extends object, const S extends string = ".", P extends string = string>(source: T, key: P, separator: S = "." as S, keyFunc?: (p: string) => string): boolean {
+export function hasPath<T extends object, const S extends string = ".", P extends string = string>(source: T, key: P, separator: S = "." as S, keyFn?: (p: string) => string): boolean {
   if (key === "*") return true;
   const keys = key.split(separator);
   for (let currObj: any = source, i = 0, len = keys.length; i < len; i++) {
-    const key = keyFunc ? keyFunc(keys[i]) : keys[i],
+    const key = keyFn ? keyFn(keys[i]) : keys[i],
       match = key.includes("[") && key.match(arrRegex);
     if (match) {
       const [, key, iStr] = match;
@@ -142,7 +142,7 @@ export function hasPath<T extends object, const S extends string = ".", P extend
  * const flat = { "user.name": "Kosi", "user.role": "admin" };
  * const obj = parsePathObj(flat);
  */
-export function parsePathObj<T extends Record<string, any>, const S extends string = ".">(obj: T, separator: S = "." as S, keyFunc = (p: string) => p, seen = new WeakSet()): Unflatten<T, S> {
+export function parsePathObj<T extends Record<string, any>, const S extends string = ".">(obj: T, separator: S = "." as S, keyFn = (p: string) => p, seen = new WeakSet()): Unflatten<T, S> {
   if (!isPOJO(obj) || seen.has(obj)) return obj as Unflatten<T, S>; // no circular references
   seen.add(obj);
   const result: any = {},
@@ -150,7 +150,7 @@ export function parsePathObj<T extends Record<string, any>, const S extends stri
   for (let i = 0, len = keys.length; i < len; i++) {
     const key: any = keys[i],
       val: any = obj[key];
-    key === "*" || key.includes(separator) ? setPath(result, key, parsePathObj(val, separator, keyFunc, seen), separator, keyFunc) : (result[key] = isPOJO(val) ? parsePathObj(val, separator, keyFunc, seen) : val);
+    key === "*" || key.includes(separator) ? setPath(result, key, parsePathObj(val, separator, keyFn, seen), separator, keyFn) : (result[key] = isPOJO(val) ? parsePathObj(val, separator, keyFn, seen) : val);
   }
   return result as Unflatten<T, S>;
 }
@@ -204,13 +204,13 @@ export interface FanoutOptionsTuple extends Partial<Record<(typeof fanoutOptsArr
  * // Direct Mode (Patching before-write)
  * fanout(state.user, { session: { id: 1, name: "Kosi", role: "admin" } }, { depth: Infinity }); // default to `Infinity` here
  */
+export function fanout<T extends object>(target: T, value?: Partial<T> | Partial<Pure<T>> | DeepPartial<T> | DeepPartial<Pure<T>>, options?: { crossRealms?: boolean } & FanoutOptionsTuple): void;
 export function fanout<T extends object>(event: ReactorEvent<T> | Payload<T>, options?: { crossRealms?: boolean } & FanoutOptionsTuple): void;
-export function fanout<T extends object>(target: T, value: Partial<T> | Partial<Pure<T>>, options?: { crossRealms?: boolean } & FanoutOptionsTuple): void;
-export function fanout<T extends object, P extends WildPaths<T> = WildPaths<T>>(state: T, path: P, value: Partial<PathValue<T, P>>, options?: { crossRealms?: boolean } & FanoutOptionsTuple): void;
+export function fanout<T extends object, P extends WildPaths<T> = WildPaths<T>>(state: T, path: P, value: Partial<PathValue<T, P>> | DeepPartial<PathValue<T, P>>, options?: { crossRealms?: boolean } & FanoutOptionsTuple): void;
 export function fanout(a: any, b?: any, c?: any, d?: any): void {
   const isEvPd = !!a?.target,
     isPath = !isEvPd && "string" === typeof b,
-    [state, path, olds, news, opts, type] = isEvPd ? [a.root, a.currentTarget.path, a.currentTarget.oldValue, a.currentTarget.value, b || NIL, a.type] : isPath ? [a, b, getPath(a, b), c, d || NIL, undefined] : [undefined, undefined, a, b, c || NIL, undefined],
+    [state, path, olds, news, opts, type] = isEvPd ? [a.root, a.currentTarget.path, a.currentTarget.oldValue, a.currentTarget.value, b || NIL, a.type] : isPath ? [a, b, getPath(a, b), c, d || NIL, undefined] : [undefined, undefined, a, b || a, c || NIL, undefined],
     target = isEvPd ? getPath(a.root, a.currentTarget.path) : isPath ? getPath(state, path) : olds; // to avoid stale refs during write-walk
   if ((isEvPd && type !== "set" && type !== "delete") || !target || !canHandle(news, opts)) return;
   const { merge = false, depth, atomic = true, skipUndef = false, cloneSets = false, txLabel } = opts;

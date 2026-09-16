@@ -270,7 +270,7 @@ export class Reactor<T extends object> {
       if ((cord as any)._dead) continue;
       const response: any = isGet ? (cord as GetterRecord<T>).cb(value, payload as Payload<T>) : isSet ? (cord as SetterRecord<T>).cb(value, terminated, payload as Payload<T>) : (cord as DeleterRecord<T>).cb(terminated, payload as Payload<T>); // all will mediate
       if (isGet || !(terminated ||= payload.terminated = response === TERMINATOR)) value = response as PathValue<T, P>;
-      if (cord.once) ((cord as any)._dead = true), (killed = true);
+      if (cord.once) killed = (cord as any)._dead = true;
     }
     if (killed) for (let i = cords.length - 1; i >= 0; i--) if ((cords[i] as any)._dead) cords.splice(i, 1), !cords.length && mediators!.delete(path);
     return value; // set - FIFO, get - LIFO
@@ -288,7 +288,7 @@ export class Reactor<T extends object> {
           const cord = scords![i];
           if ((cord as any)._dead) continue;
           cord.cb(payload.target.value as PathValue<T, P>, payload); // watchers do not terminate as they're after the OP
-          if (cord.once) ((cord as any)._dead = true), (killed = true);
+          if (cord.once) killed = (cord as any)._dead = true;
         }
         if (killed) for (let i = cords!.length - 1; i >= 0; i--) if ((cords![i] as any)._dead) cords!.splice(i, 1), !cords!.length && this.watchers!.delete(path);
       }
@@ -298,7 +298,7 @@ export class Reactor<T extends object> {
           const wildcord = wildscords![i];
           if ((wildcord as any)._dead) continue;
           wildcord.cb(payload.target.value, payload as Payload<T, "*">);
-          if (wildcord.once) ((wildcord as any)._dead = true), (killed = true);
+          if (wildcord.once) killed = (wildcord as any)._dead = true;
         }
         if (killed) for (let i = wildcords!.length - 1; i >= 0; i--) if ((wildcords![i] as any)._dead) wildcords!.splice(i, 1), !wildcords!.length && this.watchers!.delete("*");
       }
@@ -359,14 +359,14 @@ export class Reactor<T extends object> {
         if (tDepth > cord.lDepth! + cord.depth!) continue;
       }
       cord.cb(e);
-      if (cord.once) ((cord as any)._dead = true), (killed = true);
+      if (cord.once) killed = (cord as any)._dead = true;
     }
     if (killed) for (let i = cords.length - 1; i >= 0; i--) if ((cords[i] as any)._dead) cords.splice(i, 1), !cords.length && this.listeners!.delete(path);
   }
 
   /**
    * Flushes queued listener payloads.
-   * @param paths Optional path (or paths) to flush.
+   * @param paths Optional path(s) to flush.
    * @example
    * rtr.tick(); // to flush all paths in batch or pass "*" wildcard
    * @example

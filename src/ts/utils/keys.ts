@@ -11,7 +11,9 @@ export interface KeysSettings {
   /** Combos that should be rejected immediately. */
   blocks?: string[];
   /** Enables exact combo matching instead of subset matching. */
-  strictMatches?: boolean;
+  strictMatch?: boolean;
+  /** Ranks shortcut matches by exactness before insertion order. Enabled by default. */
+  rankedMatch?: boolean;
   /** Combos that are allowed as pass-through key actions. */
   whitelist?: string[];
 }
@@ -24,7 +26,7 @@ export type KeyStruct = Record<"ctrlKey" | "shiftKey" | "altKey" | "metaKey", bo
  * Used by the system to prevent default browser behaviors (e.g., zooming, tab switching, refreshing, or opening dev tools) inside the listener context.
  */
 // prettier-ignore
-export const KEYS_BLOCKS = ["Ctrl+Tab", "Ctrl+Shift+Tab", "Ctrl+PageUp", "Ctrl+PageDown", "Cmd+Option+ArrowRight", "Cmd+Option+ArrowLeft", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6", "Ctrl+7", "Ctrl+8", "Ctrl+9", "Cmd+1", "Cmd+2", "Cmd+3", "Cmd+4", "Cmd+5", "Cmd+6", "Cmd+7", "Cmd+8", "Cmd+9", "Alt+ArrowLeft", "Alt+ArrowRight", "Cmd+ArrowLeft", "Cmd+ArrowRight", "Ctrl+r", "Ctrl+Shift+r", "F5", "Shift+F5", "Cmd+r", "Cmd+Shift+r", "Ctrl+h", "Ctrl+j", "Ctrl+d", "Ctrl+f", "Cmd+y", "Cmd+Option+b", "Cmd+d", "Cmd+f", "Ctrl+Shift+i", "Ctrl+Shift+j", "Ctrl+Shift+c", "Ctrl+u", "F12", "Cmd+Option+i", "Cmd+Option+j", "Cmd+Option+c", "Cmd+Option+u", "Ctrl+=", "Ctrl+-", "Ctrl+0", "Cmd+=", "Cmd+-", "Cmd+0", "Ctrl+p", "Ctrl+s", "Ctrl+o", "Cmd+p", "Cmd+s", "Cmd+o"];
+export const KEYS_BLOCKS = ["Ctrl+Tab", "Ctrl+Shift+Tab", "Ctrl+PageUp", "Ctrl+PageDown", "Cmd+Option+ArrowRight", "Cmd+Option+ArrowLeft", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6", "Ctrl+7", "Ctrl+8", "Ctrl+9", "Cmd+1", "Cmd+2", "Cmd+3", "Cmd+4", "Cmd+5", "Cmd+6", "Cmd+7", "Cmd+8", "Cmd+9", "Alt+ArrowLeft", "Alt+ArrowRight", "Cmd+ArrowLeft", "Cmd+ArrowRight", "Ctrl+r", "Ctrl+Shift+r", "F5", "Shift+F5", "Cmd+r", "Cmd+Shift+r", "Ctrl+h", "Ctrl+j", "Ctrl+d", "Ctrl+f", "Cmd+y", "Cmd+Option+b", "Cmd+d", "Cmd+f", "Ctrl+Shift+i", "Ctrl+Shift+j", "Ctrl+Shift+c", "Ctrl+u", "F12", "Cmd+Option+i", "Cmd+Option+j", "Cmd+Option+c", "Cmd+Option+u", "Ctrl+=", "Ctrl+-", "Ctrl+0", "Cmd+=", "Cmd+-", "Cmd+0", "Ctrl+p", "Ctrl+s", "Ctrl+o", "Cmd+p", "Cmd+s", "Cmd+o"]; // JIT eats loops :)
 
 /**
  * Parses a combo string into modifier flags + terminal key.
@@ -91,18 +93,18 @@ export function cleanKeyCombo(combo: string | string[]): string | string[] {
  * @param required Required combo or combo list.
  * @param actual Actual combo string.
  * @param strict Whether to require exact match.
+ * @param cleaned Whether inputs are already cleaned.
  * @returns `true` when match succeeds.
  */
-export function matchKeys(required: string | string[], actual: string, strict = false): boolean {
-  actual = cleanKeyCombo(actual);
+export function matchKeys(required: string | string[], actual: string, strict = false, cleaned = false): boolean {
+  if (!cleaned) actual = cleanKeyCombo(actual);
   const match = (required: string, actual: string): boolean => {
-    required = cleanKeyCombo(required);
+    if (!cleaned) required = cleanKeyCombo(required);
     if (strict) return required === actual;
-    const reqKeys = required.split("+"),
-      actKeys = actual.split("+");
-    return reqKeys.every((k) => actKeys.includes(k));
+    const actualKeys = actual.split("+");
+    return required.split("+").every((k) => actualKeys.includes(k));
   };
-  return Array.isArray(required) ? required.some((req) => match(req, actual)) : match(required, actual);
+  return Array.isArray(required) ? required.some((required) => match(required, actual)) : match(required, actual);
 }
 
 /**
@@ -114,13 +116,21 @@ export function matchKeys(required: string | string[], actual: string, strict = 
  */
 export function getTermsForKey(combo: string, settings: KeysSettings): { override: boolean; block: boolean; whitelisted: boolean; action: string | null } {
   const terms = { override: false, block: false, whitelisted: false, action: null as string | null },
-    { overrides = [], shortcuts = {}, blocks = [], strictMatches: s = false, whitelist = [] } = settings || {};
+    { overrides = [], shortcuts = {}, blocks = [], strictMatch: s = false, rankedMatch = true, whitelist = [] } = settings || {};
   combo = cleanKeyCombo(combo);
   if (matchKeys(overrides, combo, s)) terms.override = true;
   if (matchKeys(blocks, combo, s)) terms.block = true;
-  if (matchKeys(whitelist as unknown as string[], combo)) terms.whitelisted = true;
-  terms.action = Object.keys(shortcuts).find((key) => matchKeys(shortcuts[key] as string | string[], combo, s)) || null;
-  return terms;
+  if (matchKeys(whitelist, combo)) terms.whitelisted = true;
+  if (!rankedMatch) return (terms.action = Object.keys(shortcuts).find((key) => matchKeys(shortcuts[key], combo, s)) || null), terms;
+  // prettier-ignore
+  let bestA: string | null = null, bestE = false, bestL = 0;
+  for (const action of Object.keys(shortcuts))
+    for (const c of Array.isArray(shortcuts[action]) ? shortcuts[action] : [shortcuts[action]]) {
+      // prettier-ignore
+      const required = cleanKeyCombo(c), isE = required === combo, len = required.split("+").length;
+      if (matchKeys(required, combo, s, true) && (!bestA || (isE && !bestE) || (isE === bestE && len > bestL))) (bestA = action), (bestE = isE), (bestL = len);
+    }
+  return (terms.action = bestA), terms;
 }
 
 /**
