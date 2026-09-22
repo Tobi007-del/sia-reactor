@@ -1,5 +1,17 @@
 # sia-reactor
 
+## 0.0.44
+
+### Patch Changes
+
+- Silence func allowing more options
+
+## 0.0.43
+
+### Patch Changes
+
+- Mandatory fingerprinting
+
 ## 0.0.42
 
 ### Patch Changes

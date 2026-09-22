@@ -4,9 +4,10 @@ import { withMeta } from "@utils/obj";
  * Executes `fn` with `silent: true` merged into all current `Reactor` payloads.
  * Use this to perform mutations you don't want recorded by `TimeTravelModule`.
  * @param fn Function to execute with `silent` meta.
+ * @param bool Override for ease of use in dynamic usecases, defaults to `true`
  */
-export function silence<T>(fn: () => T): T {
-  return withMeta({ silent: true }, fn);
+export function silence<T>(fn: () => T, bool = true): T {
+  return withMeta({ silent: bool }, fn);
 }
 
 declare module "@defs/reactor" {

@@ -1,3 +1,7 @@
+import "./types/global.d.ts";
+
+globalThis.sia ??= {}; // bundler will handle the rest
+
 export { CTX, RAW, INERTIA, REJECTABLE, INDIFFABLE, TERMINATOR, VERSION, SSVERSION, RTR_BATCH, RTR_LOG, EVT_OPTS, NIL, NOOP } from "@core/consts";
 
 export { Reactor } from "@core/reactor";
