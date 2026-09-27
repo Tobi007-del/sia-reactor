@@ -4,13 +4,13 @@ import { wpArr } from "@modules/base";
 import { TimeTravelModule } from "@modules/timeTravel";
 import { createEl } from "@utils/dom";
 import { nuke } from "@utils/obj";
-import { formatKeyForDisplay as formatKFD, keyEventAllowed, KEYS_BLOCKS, parseForARIAKS } from "@utils/keys";
+import { formatKeyTooltip as formatKFD, keyEventAllowed, KEYS_BLOCKS, parseForARIAKS } from "@utils/keys";
 import { effect } from "./effect";
 
 const keys = {
   blocks: KEYS_BLOCKS,
   overrides: ["Ctrl+z", "Cmd+z", "Ctrl+y", "Cmd+y", "Ctrl+Shift+z", "Cmd+Shift+z", "Home", "End", "ArrowLeft", "ArrowRight", "Space", "Alt+Space", "Escape", "Delete"],
-  shortcuts: { undo: ["Ctrl+z", "Cmd+z"], redo: ["Ctrl+y", "Cmd+y", "Ctrl+Shift+z", "Cmd+Shift+z"], genesis: "Home", trackUntrack: "t", ending: "End", prevFrame: ",", nextFrame: ".", skipBwd: "ArrowLeft", skipFwd: "ArrowRight", playPause: "Space", rewind: "Alt+Space", closeOverlay: "Escape", clrHistory: "Delete", export: "e", import: "i", clear: "c" },
+  shortcuts: { undo: ["Ctrl+z", "Cmd+z"], redo: ["Ctrl+y", "Cmd+y", "Ctrl+Shift+z", "Cmd+Shift+z"], genesis: "Home", trackUntrack: "t", ending: "End", prevFrame: ",", nextFrame: ".", playPause: "Space", rewind: "Alt+Space", closeOverlay: "Escape", clrHistory: "Delete", export: "e", import: "i", clear: "c" },
 };
 
 /** Reactive options for the TimeTravel overlay instance. */
@@ -59,17 +59,17 @@ export class TimeTravelConsole {
       panel = createEl("aside", { className: "sia-tt-console", ariaLabel: "time travel overlay" }),
       title = createEl("div", { className: "title" }),
       frame = createEl("span", { className: "muted" }),
-      clrHistory = createEl("button", { textContent: `Clear History${formatKFD(keys.shortcuts!.clrHistory)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clrHistory, false), onclick: () => (this.time.clear(), (this.state.import = "")) }),
-      undo = createEl("button", { textContent: `Undo${formatKFD(keys.shortcuts!.undo[0])}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.undo, false), onclick: () => this.time.undo(this.state.stride) }),
-      redo = createEl("button", { textContent: `Redo${formatKFD(keys.shortcuts!.redo[0])}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.redo, false), onclick: () => this.time.redo(this.state.stride) }),
-      genesis = createEl("button", { textContent: `Genesis${formatKFD(keys.shortcuts!.genesis)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.genesis, false), onclick: () => this.time.jumpTo(0) }),
-      playPause = createEl("button", { onclick: () => this.time[s.paused ? "play" : "pause"](), ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.playPause, false) }),
-      rewind = createEl("button", { textContent: `Rewind${formatKFD(keys.shortcuts!.rewind)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.rewind, false), onclick: this.time.rewind }),
-      trackUntrack = createEl("button", { onclick: () => this.time[s.tracking ? "untrack" : "track"](), ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.trackUntrack, false) }),
+      clrHistory = createEl("button", { textContent: `Clear History${formatKFD(keys.shortcuts!.clrHistory)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clrHistory), onclick: () => (this.time.clear(), (this.state.import = "")) }),
+      undo = createEl("button", { textContent: `Undo${formatKFD(keys.shortcuts!.undo[0])}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.undo), onclick: () => this.time.undo(this.state.stride) }),
+      redo = createEl("button", { textContent: `Redo${formatKFD(keys.shortcuts!.redo[0])}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.redo), onclick: () => this.time.redo(this.state.stride) }),
+      genesis = createEl("button", { textContent: `Genesis${formatKFD(keys.shortcuts!.genesis)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.genesis), onclick: () => this.time.jumpTo(0) }),
+      playPause = createEl("button", { onclick: () => this.time[s.paused ? "play" : "pause"](), ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.playPause) }),
+      rewind = createEl("button", { textContent: `Rewind${formatKFD(keys.shortcuts!.rewind)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.rewind), onclick: this.time.rewind }),
+      trackUntrack = createEl("button", { onclick: () => this.time[s.tracking ? "untrack" : "track"](), ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.trackUntrack) }),
       range = createEl("input", { type: "range", min: "0", title: "time travel frame", ariaLabel: "time travel frame", oninput: () => this.time.jumpTo(Number(range.value)) }),
-      exp = createEl("button", { textContent: `Export${formatKFD(keys.shortcuts!.export)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.export, false), onclick: () => (this.state.import = this.time.export(null, 2)) }),
-      imp = createEl("button", { textContent: `Import${formatKFD(keys.shortcuts!.import)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.import, false), onclick: () => this.state.import.trim().length && this.time.import(this.state.import) }),
-      clr = createEl("button", { textContent: `Clear${formatKFD(keys.shortcuts!.clear)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clear, false), onclick: () => (this.state.import = "") }),
+      exp = createEl("button", { textContent: `Export${formatKFD(keys.shortcuts!.export)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.export), onclick: () => (this.state.import = this.time.export(null, 2)) }),
+      imp = createEl("button", { textContent: `Import${formatKFD(keys.shortcuts!.import)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.import), onclick: () => this.state.import.trim().length && this.time.import(this.state.import) }),
+      clr = createEl("button", { textContent: `Clear${formatKFD(keys.shortcuts!.clear)}`, ariaKeyShortcuts: parseForARIAKS(keys.shortcuts!.clear), onclick: () => (this.state.import = "") }),
       payload = createEl("textarea", { className: "sia-tt-io", readOnly: true, placeholder: "current payload json", title: "Current History Entry" }),
       io = createEl("textarea", { className: "sia-tt-io", placeholder: "timeline payload json", title: "Time History", oninput: () => (this.state.import = io.value) }),
       foot = createEl("p", { className: "sia-tt-footnote", innerHTML: "<span>Try this in your app? </span>" }),
@@ -103,9 +103,7 @@ export class TimeTravelConsole {
     filters.append((filterBox.append((filterRow1.append(whitelistLabel, whitelist), filterRow1), (filterRow2.append(blacklistLabel, blacklist), filterRow2)), filterBox));
     panel.append(title, status, (row1.append(playPause, rewind, genesis), row1), (row2.append(undo, redo, trackUntrack, stride), row2), payload, (row3.append(speed, range), row3), filters, (row4.append(exp, imp, clr), row4), io, (row5.append(delay, limit, (read.append(readBox, " Read Mirror"), read), (write.append(writeBox, " Write Mirror"), write)), row5), (foot.prepend(stats), foot.append(link), foot));
     this.host.append(toggle, panel);
-    this.keydown = (e, can = this.state.open && (this.config.devOnly ? CTX.isDevEnv : true), a = can && keyEventAllowed(e, keys)) => (
-      a && e.stopImmediatePropagation(), a === "undo" ? this.time.undo(this.state.stride) : a === "redo" ? this.time.redo(this.state.stride) : a === "genesis" ? this.time.jumpTo(0) : a === "trackUntrack" ? this.time[s.tracking ? "untrack" : "track"]() : a === "ending" ? this.time.jumpTo(s.history.length) : a === "prevFrame" ? this.time.step(this.state.stride, false) : a === "nextFrame" ? this.time.step(this.state.stride, true) : a === "skipBwd" ? this.time.step(5 * this.state.stride, false) : a === "skipFwd" ? this.time.step(5 * this.state.stride, true) : a === "rewind" ? this.time.rewind() : a === "playPause" ? this.time[s.paused ? "play" : "pause"]() : a === "clrHistory" ? this.time.clear() : a === "closeOverlay" ? (this.state.open = false) : a === "export" ? (this.state.import = this.time.export()) : a === "import" ? this.state.import.trim().length && this.time.import(this.state.import) : a === "clear" && (this.state.import = "")
-    );
+    this.keydown = (e, can = this.state.open && (this.config.devOnly ? CTX.isDevEnv : true), a = can && keyEventAllowed(e, keys)) => (a && e.stopImmediatePropagation(), a === "undo" ? this.time.undo(this.state.stride) : a === "redo" ? this.time.redo(this.state.stride) : a === "genesis" ? this.time.jumpTo(0) : a === "trackUntrack" ? this.time[s.tracking ? "untrack" : "track"]() : a === "ending" ? this.time.jumpTo(s.history.length) : a === "prevFrame" ? this.time.step(this.state.stride, false) : a === "nextFrame" ? this.time.step(this.state.stride, true) : a === "rewind" ? this.time.rewind() : a === "playPause" ? this.time[s.paused ? "play" : "pause"]() : a === "clrHistory" ? this.time.clear() : a === "closeOverlay" ? (this.state.open = false) : a === "export" ? (this.state.import = this.time.export()) : a === "import" ? this.state.import.trim().length && this.time.import(this.state.import) : a === "clear" && (this.state.import = ""));
     this.keyup = (e, can = this.state.open && (this.config.devOnly ? CTX.isDevEnv : true), a = can && keyEventAllowed(e, keys)) => a && e.stopImmediatePropagation();
     window.addEventListener("keydown", this.keydown), window.addEventListener("keyup", this.keyup);
     const sync = [

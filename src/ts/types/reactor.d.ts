@@ -48,15 +48,12 @@ export interface Target<T, P extends WildPaths<T> = WildPaths<T>> {
 }
 
 /** Runtime payload union for mediated operations and update waves (Creates the IDE magic). */
-export type Payload<T, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> =
-  | DirectPayload<T, P>
-  | UpdatePayload<T, P, D>;
+export type Payload<T, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> = DirectPayload<T, P> | UpdatePayload<T, P, D>;
 
 /** Extensible meta shape injected into payloads via `...CTX.meta`. */
 export interface ReactorMeta {}
 export interface BasePayload<T, P extends WildPaths<T> = WildPaths<T>> extends ReactorMeta {
-  /** Current target context for the active propagation path.
-   * Same reference to `target`, here for seamless API switches: `watch()` -> `on()`. */
+  /** Current target context for the active propagation path. Same reference to `target` in `watch()`. */
   currentTarget: Target<T, P>;
   /** Root reactive object for this payload. */
   readonly root: T;
@@ -73,11 +70,7 @@ export interface DirectPayload<T, P extends WildPaths<T> = WildPaths<T>> extends
   /** Target context for this payload. */
   readonly target: Target<T, P>;
 }
-export interface UpdatePayload<
-  T,
-  P extends WildPaths<T> = WildPaths<T>,
-  D extends number = MaxDepth
-> extends BasePayload<T, P> {
+export interface UpdatePayload<T, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> extends BasePayload<T, P> {
   /** Type of the operation that triggered this payload, i.e. "update" */
   type: "update";
   /** Target context for this payload. */
@@ -85,17 +78,9 @@ export interface UpdatePayload<
 }
 
 /** Event union with payload-aware overrides for `type`, `path`, and value fields (Creates the IDE magic). */
-export type REvent<
-  T extends object,
-  P extends WildPaths<T> = WildPaths<T>,
-  D extends number = MaxDepth
-> =
-  | (Omit<ReactorEvent<T, P>, OverrideEvtProp> &
-      DirectPayload<T, P> &
-      OverrideEvt<DirectPayload<T, P>>)
-  | (Omit<ReactorEvent<T, P>, OverrideEvtProp> &
-      UpdatePayload<T, P, D> &
-      OverrideEvt<UpdatePayload<T, P, D>>);
+export type REvent<T extends object, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> =
+  | (Omit<ReactorEvent<T, P>, OverrideEvtProp> & DirectPayload<T, P> & OverrideEvt<DirectPayload<T, P>>)
+  | (Omit<ReactorEvent<T, P>, OverrideEvtProp> & UpdatePayload<T, P, D> & OverrideEvt<UpdatePayload<T, P, D>>);
 
 type OverrideEvtProp = "type" | "target" | "value" | "oldValue" | "path";
 interface OverrideEvt<PL extends { target: { path: any; value: any; oldValue?: any } }> {
@@ -112,10 +97,7 @@ interface OverrideEvt<PL extends { target: { path: any; value: any; oldValue?: a
 // ===========================================================================
 
 /** Get mediator callback. */
-export type Getter<T, P extends WildPaths<T> = WildPaths<T>> = (
-  value: PathValue<T, P>,
-  payload: Payload<T, P>
-) => PathValue<T, P> | undefined;
+export type Getter<T, P extends WildPaths<T> = WildPaths<T>> = (value: PathValue<T, P>, payload: Payload<T, P>) => PathValue<T, P> | undefined;
 
 /** Set mediator callback. */
 export type Setter<T, P extends WildPaths<T> = WildPaths<T>> = (
@@ -125,23 +107,13 @@ export type Setter<T, P extends WildPaths<T> = WildPaths<T>> = (
 ) => PathValue<T, P> | typeof TERMINATOR | undefined;
 
 /** Delete mediator callback. */
-export type Deleter<T, P extends WildPaths<T> = WildPaths<T>> = (
-  terminated: boolean,
-  payload: Payload<T, P>
-) => typeof TERMINATOR | undefined;
+export type Deleter<T, P extends WildPaths<T> = WildPaths<T>> = (terminated: boolean, payload: Payload<T, P>) => typeof TERMINATOR | undefined;
 
 /** Watch callback (synchronous path observer). */
-export type Watcher<T, P extends WildPaths<T> = WildPaths<T>> = (
-  value: PathValue<T, P>,
-  payload: Payload<T, P>
-) => void;
+export type Watcher<T, P extends WildPaths<T> = WildPaths<T>> = (value: PathValue<T, P>, payload: Payload<T, P>) => void;
 
 /** Listener callback (batched/asynchronous by default). */
-export type Listener<
-  T extends object,
-  P extends WildPaths<T> = WildPaths<T>,
-  D extends number = MaxDepth
-> = (event: REvent<T, P, D>) => void;
+export type Listener<T extends object, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> = (event: REvent<T, P, D>) => void;
 
 // ===========================================================================
 // ENGINE RECORDS (Internal Storage)
@@ -167,11 +139,7 @@ export type WatcherRecord<T extends object, P extends WildPaths<T> = WildPaths<T
 } & RecordCleanup &
   SyncOptionsTuple;
 
-export type ListenerRecord<
-  T extends object,
-  P extends WildPaths<T> = WildPaths<T>,
-  D extends number = MaxDepth
-> = {
+export type ListenerRecord<T extends object, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> = {
   cb: Listener<T, P, D>;
   lDepth?: number; // Listener Depth
 } & RecordCleanup &
@@ -201,8 +169,7 @@ export interface SyncOptionsTuple {
 /** Tuple-form and shorthand boolean for mediator/watch registrations. */
 export type SyncOptions = boolean | SyncOptionsTuple;
 
-export interface ListenerOptionsTuple<D extends number = MaxDepth>
-  extends Omit<SyncOptionsTuple, "lazy"> {
+export interface ListenerOptionsTuple<D extends number = MaxDepth> extends Omit<SyncOptionsTuple, "lazy"> {
   /** Whether to listen on the capture phase against bubble. */
   capture?: boolean;
   /** Maximum path nested depth for event propagation, try `1` if listening to an array with nested objects. */
@@ -212,9 +179,7 @@ export interface ListenerOptionsTuple<D extends number = MaxDepth>
 export type ListenerOptions<D extends number = MaxDepth> = boolean | ListenerOptionsTuple<D>;
 
 /** Options accepted by adapter effects (`sync: true` -> watch mode else listener mode). */
-export type EffectOptions =
-  | (Omit<SyncOptionsTuple, "init"> & { sync: true })
-  | (Omit<ListenerOptionsTuple, "init"> & { sync?: false });
+export type EffectOptions = (Omit<SyncOptionsTuple, "init"> & { sync: true }) | (Omit<ListenerOptionsTuple, "init"> & { sync?: false });
 
 /** Reactor bootstrap/build configuration. */
 export interface ReactorBuild<T extends object, P extends Paths<T> = Paths<T>> {
@@ -266,13 +231,7 @@ export interface ReactorBuild<T extends object, P extends Paths<T> = Paths<T>> {
     path: Paths<T> | Paths<T>[]
   ) => typeof TERMINATOR | undefined; // "almighty" mediation
   /** Root-level `has` initial mediator; can observe or modify results. */
-  has?: (
-    object: PathBranchValue<T, P>,
-    key: PathKey<T, P>,
-    has: boolean,
-    receiver: Reactive<T>,
-    path: Paths<T> | Paths<T>[]
-  ) => boolean; // "almighty" mediation
+  has?: (object: PathBranchValue<T, P>, key: PathKey<T, P>, has: boolean, receiver: Reactive<T>, path: Paths<T> | Paths<T>[]) => boolean; // "almighty" mediation
   /** Root-level `getOwnPropertyDescriptor` initial mediator; can observe or modify results. */
   getOwnPropertyDescriptor?: (
     object: PathBranchValue<T, P>,
@@ -282,10 +241,5 @@ export interface ReactorBuild<T extends object, P extends Paths<T> = Paths<T>> {
     path: Paths<T> | Paths<T>[]
   ) => PropertyDescriptor | undefined; // "almighty" mediation
   /** Root-level `ownKeys` initial mediator; can observe or modify results. */
-  ownKeys?: (
-    object: PathBranchValue<T, P>,
-    keys: (string | symbol)[],
-    receiver: Reactive<T>,
-    path: WildPaths<T>
-  ) => (string | symbol)[]; // "almighty" mediation
+  ownKeys?: (object: PathBranchValue<T, P>, keys: (string | symbol)[], receiver: Reactive<T>, path: WildPaths<T>) => (string | symbol)[]; // "almighty" mediation
 } // debating keeping use of the Reflect API opt-in

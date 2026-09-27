@@ -50,27 +50,27 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   protected override onPath = this.record;
   /** Chronicling the lifecycle of the system, Captures the essence of every mutation wave that bubbles up. */
   protected record(e: REvent<any, P> | Payload<any, P>, rid = this.rids.get(e.reactor)!): void {
-    if (!this.state.paused || !(this._tracking ?? this.state.tracking) || (e as any).silent) return;
+    if (!this.state.paused || !(this._tracking ?? this.state.tracking) || e.silent) return;
     if (this.state.currentFrame < this.state.history.length) this.state.history.length = this.state.currentFrame; // we must destroy the "Alternate Future" (the redo stack) before recording.
     const timestamp = (e as any).timestamp ?? performance.now(); // payloads dont allow timestamps since they're sync, but you asked for it
     let en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: !this.config.mirrorReads || !e.target.path.includes("intent") ? e.reactor.snapshot(false, e.target.oldValue) : getPath(e.reactor.core as any, e.target.path.replace("intent", "state")), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.lastTimestamp } as HistoryEntry<any, P>;
     !e.target.hadKey && (en.hadKey = false);
     if (this.config.beforeEntry) {
-      const res = this.config.beforeEntry(en, this.state.history); // the power to edit history as it unfolds, or even block it entirely if you want to be a total control freak about it
+      const res = this.config.beforeEntry(en, this.state.history, e); // the power to edit history as it unfolds, or even block it entirely if you want to be a total control freak about it
       if (res === false) return; // blocking entry
       if (res && res !== true) en = res;
     }
-    if (e.tx) {
-      let histTx = this.txMap.get(e.tx);
-      if (!histTx) {
-        this.txMap.set(e.tx, (histTx = { id: e.tx.id, label: e.tx.label, nodes: [en], deltat: en.deltat, start: timestamp, end: timestamp })); // we can tell when the start and duration unlike singular mutations
-        const parentTx = e.tx.parent ? this.txMap.get(e.tx.parent) : null;
-        (parentTx ? parentTx.nodes : this.state.history).push(histTx);
-      } else histTx.nodes.push(en), (histTx.end = timestamp); // this is peak analytical metrics here
-    } else this.state.history.push(en); // hybrid so no more space than necessary
+    e.tx ? this.resolveTx(e.tx, timestamp, en.deltat).nodes.push(en) : this.state.history.push(en); // hybrid so no more space than necessary
     force(() => (this.state.currentFrame = this.state.history.length), !!e.tx); // Lock the playhead to the absolute present, re-trigger if tx
     while (this.state.history.length > this.config.limit) this.state.history.shift(), this.state.currentFrame--; // Drop the oldest memories if we exceed the limit, `>` since after entering
     this.lastTimestamp = timestamp; // Update the metronome with the timestamp of the latest event
+  }
+  /** Resolves and constructs the hierarchical ancestry for nested transactions as they bubble up from the depths. */
+  protected resolveTx(tx: Transaction, timestamp: number, deltat: number): HistoryTransaction<T, P> {
+    let px = this.txMap.get(tx); // previous tx
+    if (px) return (px.end = timestamp), tx.parent && this.resolveTx(tx.parent, timestamp, deltat), px; // this is peak analytical metrics here
+    this.txMap.set(tx, (px = { id: tx.id, label: tx.label, nodes: [], deltat: 0, start: timestamp, end: timestamp } as HistoryTransaction<T, P>)); // start and end unlike singular mutations
+    return tx.parent ? this.resolveTx(tx.parent, timestamp, deltat).nodes.push(px) : ((px.deltat = deltat), this.state.history.push(px)), px;
   }
 
   /** Resumes the passive recording of state changes. */

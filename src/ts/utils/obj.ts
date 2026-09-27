@@ -156,10 +156,10 @@ export function parsePathObj<T extends Record<string, any>, const S extends stri
 }
 
 /** Fast array scanner. Checks if a target path exactly matches or is a child of any path in the provided array. */
-export function matchPaths(paths: string[], target: string): boolean {
+export function matchPaths(paths: Array<string | RegExp>, target: string): boolean {
   for (let i = 0, len = paths.length; i < len; i++) {
     const p = paths[i];
-    if (target === p || target.startsWith(p + ".")) return true;
+    if (typeof p !== "string" ? !!p?.test?.(target) : target === p || target.startsWith(p + ".")) return true;
   }
   return false;
 }
@@ -221,7 +221,7 @@ export function fanout(a: any, b?: any, c?: any, d?: any): void {
           val = obj[key];
         try {
           if (atomic && Array.isArray(val)) (target[key] = cloneSets ? deepClone(val) : val), (target[key].length = target[key].length); // ping commoners
-          else depth > 1 && canHandle(val, opts) ? walk((target[key] ||= {}), val, depth - 1) : (!skipUndef || val !== undefined) && (target[key] = cloneSets ? deepClone(val) : val);
+          else depth > 1 && canHandle(val, opts) ? walk((target[key] ||= Array.isArray(val) ? [] : {}), val, depth - 1) : (!skipUndef || val !== undefined) && (target[key] = cloneSets ? deepClone(val) : val);
         } catch (e) {
           if (e instanceof RangeError) throw e; // internals can skip, not users
         } // call a spade a spade and just skip, no descriptor gymanstics
@@ -367,22 +367,23 @@ export function resetMeta(key: keyof ReactorMeta) {
  * - Child paths: `getPaths(store, "settings.audio")`
  * - Next words (typeahead): `getPaths(store, "settings", { depth: 1 })`
  */
-export function getPaths<T extends object, const S extends string = ".", P extends WildPaths<T, S> = "*", D extends number = MaxDepth>(obj: T, path: P = "*" as P, config: { depth?: D; separator?: S } & typeof CTX.defaults = CTX.defaults): (P extends "*" ? Paths<T, S, D> : ChildPaths<T, P, S, D>)[] {
+export function getPaths<T extends object, const S extends string = ".", P extends WildPaths<T, S> = "*", D extends number = MaxDepth, L extends boolean = false>(obj: T, path: P = "*" as P, config: { depth?: D; separator?: S; leavesOnly?: L } & typeof CTX.defaults = CTX.defaults as any): (P extends "*" ? Paths<T, S, D, L> : ChildPaths<T, P, S, D, L>)[] {
   const target = path === "*" ? obj : getPath(obj, path as any, config.separator as S),
     result: string[] = [],
     seen = new Set<any>();
   if (!canHandle(target, config)) return result as any;
   const walk = (curr: any, currPath: string, depth: number) => {
-    if (seen.has(curr) || depth >= (config.depth ?? 19)) return;
+    if (seen.has(curr) || depth >= (config.depth ?? 18)) return;
     seen.add(curr);
     const keys = config.preserveContext ? Reflect.ownKeys(curr) : Object.keys(curr);
     for (let i = 0, len = keys.length; i < len; i++) {
       const key = String(keys[i]),
         val = (curr as any)[key],
-        newPath = currPath ? `${currPath}${config.separator || "."}${key}` : key;
-      result.push(newPath);
+        newPath = currPath ? `${currPath}${config.separator || "."}${key}` : key,
+        isNode = canHandle(val, config);
+      if (!config.leavesOnly || !isNode) result.push(newPath);
       try {
-        canHandle(val, config) && walk(val, newPath, depth + 1);
+        isNode && walk(val, newPath, depth + 1);
       } catch (e) {
         if (e instanceof RangeError) throw e;
       }

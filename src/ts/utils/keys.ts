@@ -26,7 +26,10 @@ export type KeyStruct = Record<"ctrlKey" | "shiftKey" | "altKey" | "metaKey", bo
  * Used by the system to prevent default browser behaviors (e.g., zooming, tab switching, refreshing, or opening dev tools) inside the listener context.
  */
 // prettier-ignore
-export const KEYS_BLOCKS = ["Ctrl+Tab", "Ctrl+Shift+Tab", "Ctrl+PageUp", "Ctrl+PageDown", "Cmd+Option+ArrowRight", "Cmd+Option+ArrowLeft", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6", "Ctrl+7", "Ctrl+8", "Ctrl+9", "Cmd+1", "Cmd+2", "Cmd+3", "Cmd+4", "Cmd+5", "Cmd+6", "Cmd+7", "Cmd+8", "Cmd+9", "Alt+ArrowLeft", "Alt+ArrowRight", "Cmd+ArrowLeft", "Cmd+ArrowRight", "Ctrl+r", "Ctrl+Shift+r", "F5", "Shift+F5", "Cmd+r", "Cmd+Shift+r", "Ctrl+h", "Ctrl+j", "Ctrl+d", "Ctrl+f", "Cmd+y", "Cmd+Option+b", "Cmd+d", "Cmd+f", "Ctrl+Shift+i", "Ctrl+Shift+j", "Ctrl+Shift+c", "Ctrl+u", "F12", "Cmd+Option+i", "Cmd+Option+j", "Cmd+Option+c", "Cmd+Option+u", "Ctrl+=", "Ctrl+-", "Ctrl+0", "Cmd+=", "Cmd+-", "Cmd+0", "Ctrl+p", "Ctrl+s", "Ctrl+o", "Cmd+p", "Cmd+s", "Cmd+o"]; // JIT eats loops :)
+export const KEYS_BLOCKS = ["Ctrl+Tab", "Ctrl+Shift+Tab", "Ctrl+PageUp", "Ctrl+PageDown", "Cmd+Option+ArrowRight", "Cmd+Option+ArrowLeft", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6", "Ctrl+7", "Ctrl+8", "Ctrl+9", "Cmd+1", "Cmd+2", "Cmd+3", "Cmd+4", "Cmd+5", "Cmd+6", "Cmd+7", "Cmd+8", "Cmd+9", "Alt+ArrowLeft", "Alt+ArrowRight", "Cmd+ArrowLeft", "Cmd+ArrowRight", "Ctrl+r", "Ctrl+Shift+r", "F5", "Shift+F5", "Cmd+r", "Cmd+Shift+r", "Ctrl+h", "Ctrl+j", "Ctrl+d", "Ctrl+f", "Cmd+y", "Cmd+Option+b", "Cmd+d", "Cmd+f", "Ctrl+Shift+i", "Ctrl+Shift+j", "Ctrl+Shift+c", "Ctrl+u", "F12", "Cmd+Option+i", "Cmd+Option+j", "Cmd+Option+c", "Cmd+Option+u", "Ctrl+=", "Ctrl+-", "Ctrl+0", "Cmd+=", "Cmd+-", "Cmd+0", "Ctrl+p", "Ctrl+s", "Ctrl+o", "Cmd+p", "Cmd+s", "Cmd+o"], // JIT eats loops :)
+  KEYS_MODS = ["ctrl", "shift", "alt", "meta"] as const,
+  KEYS_CMODS = ["ctrl", "alt", "meta"] as const,
+  KEYS_ALIAS: Record<string, string> = { cmd: "meta", space: " " };
 
 /**
  * Parses a combo string into modifier flags + terminal key.
@@ -48,11 +51,7 @@ export function parseKeyCombo(combo: string): KeyStruct {
  */
 export function stringifyKeyEvent(e: KeyStruct | KeyboardEvent): string {
   const parts: string[] = [];
-  if (e.ctrlKey) parts.push("ctrl");
-  if (e.altKey) parts.push("alt");
-  if (e.shiftKey) parts.push("shift");
-  if (e.metaKey) parts.push("meta");
-  parts.push(e.key?.toLowerCase() ?? "");
+  e.ctrlKey && parts.push("ctrl"), e.altKey && parts.push("alt"), e.shiftKey && parts.push("shift"), e.metaKey && parts.push("meta"), parts.push(e.key?.toLowerCase() ?? "");
   return parts.join("+");
 }
 
@@ -63,25 +62,24 @@ export function stringifyKeyEvent(e: KeyStruct | KeyboardEvent): string {
  * - preserving literal space/plus edge cases,
  * - sorting modifiers as `ctrl, alt, shift, meta`.
  * @param combo Raw combo or list of combos.
+ * @param mods Optional list of modifier keys to sort and filter by (default: `["ctrl", "shift", "alt", "meta"]`).
  * @returns Canonical combo string or list.
  * @example
- * cleanKeyCombo(["Shift+Ctrl+Z", "cmd+y"])
- * // => ["ctrl+shift+z", "meta+y"]
+ * cleanKeyCombo(["Shift+Alt+Ctrl+Z", "cmd+y"])
+ * // => ["ctrl+shift+alt+z", "meta+y"]
  */
-export function cleanKeyCombo(combo: string): string;
-export function cleanKeyCombo(combo: string[]): string[];
-export function cleanKeyCombo(combo: string | string[]): string | string[] {
+export function cleanKeyCombo(combo: string, mods?: string[]): string;
+export function cleanKeyCombo(combo: string[], mods?: string[]): string[];
+export function cleanKeyCombo(combo: string | string[], mods: string[] = KEYS_MODS as any): string | string[] {
   const clean = (combo: string): string => {
-    const m = ["ctrl", "alt", "shift", "meta"],
-      alias: Record<string, string> = { cmd: "meta", space: " " };
     if (combo === " " || combo === "+") return combo;
     combo = combo.replace(/\+\s*\+$/, "+plus");
     const p = combo
       .toLowerCase()
       .split("+")
       .filter((k) => k !== "")
-      .map((k) => alias[k] || (k === "plus" ? "+" : k.trim() || " "));
-    return [...p.filter((k) => m.includes(k)).sort((a, b) => m.indexOf(a) - m.indexOf(b)), ...(p.filter((k) => !m.includes(k)) || "")].join("+");
+      .map((k, _, __, tk = k.trim()) => KEYS_ALIAS[tk] || (tk === "plus" ? "+" : tk || " "));
+    return [...p.filter((k) => mods.includes(k)).sort((a, b) => mods.indexOf(a) - mods.indexOf(b)), ...(p.filter((k) => !mods.includes(k)) || "")].join("+");
   };
   return Array.isArray(combo) ? combo.map(clean) : clean(combo);
 }
@@ -93,18 +91,20 @@ export function cleanKeyCombo(combo: string | string[]): string | string[] {
  * @param required Required combo or combo list.
  * @param actual Actual combo string.
  * @param strict Whether to require exact match.
- * @param cleaned Whether inputs are already cleaned.
+ * @param clean Whether to clean the actual combo.
  * @returns `true` when match succeeds.
  */
-export function matchKeys(required: string | string[], actual: string, strict = false, cleaned = false): boolean {
-  if (!cleaned) actual = cleanKeyCombo(actual);
-  const match = (required: string, actual: string): boolean => {
-    if (!cleaned) required = cleanKeyCombo(required);
-    if (strict) return required === actual;
-    const actualKeys = actual.split("+");
-    return required.split("+").every((k) => actualKeys.includes(k));
+export function matchKeys(required: string | string[], actual: string, strict = false, clean = true): boolean {
+  if (clean) actual = cleanKeyCombo(actual);
+  const match = (req: string, actual: string): boolean => {
+    req = cleanKeyCombo(req);
+    if (strict) return req === actual;
+    const reqs = req.split("+"),
+      reals = actual.split("+");
+    for (const mod of KEYS_CMODS) if (reals.includes(mod) && !reqs.includes(mod)) return false; // no unrequested heavy mods
+    return reqs.every((k) => reals.includes(k));
   };
-  return Array.isArray(required) ? required.some((required) => match(required, actual)) : match(required, actual);
+  return Array.isArray(required) ? required.some((req) => match(req, actual)) : match(required, actual);
 }
 
 /**
@@ -116,19 +116,19 @@ export function matchKeys(required: string | string[], actual: string, strict = 
  */
 export function getTermsForKey(combo: string, settings: KeysSettings): { override: boolean; block: boolean; whitelisted: boolean; action: string | null } {
   const terms = { override: false, block: false, whitelisted: false, action: null as string | null },
-    { overrides = [], shortcuts = {}, blocks = [], strictMatch: s = false, rankedMatch = true, whitelist = [] } = settings || {};
+    { overrides = [], shortcuts = {}, blocks = [], strictMatch: stm = false, rankedMatch: ram = true, whitelist = [] } = settings || {};
   combo = cleanKeyCombo(combo);
-  if (matchKeys(overrides, combo, s)) terms.override = true;
-  if (matchKeys(blocks, combo, s)) terms.block = true;
-  if (matchKeys(whitelist, combo)) terms.whitelisted = true;
-  if (!rankedMatch) return (terms.action = Object.keys(shortcuts).find((key) => matchKeys(shortcuts[key], combo, s)) || null), terms;
+  if (matchKeys(overrides, combo, stm, false)) terms.override = true;
+  if (matchKeys(blocks, combo, stm, false)) terms.block = true;
+  if (matchKeys(whitelist, combo, false)) terms.whitelisted = true;
+  if (!ram) return (terms.action = Object.keys(shortcuts).find((id) => shortcuts[id] && matchKeys(shortcuts[id], combo, stm, false)) || null), terms;
   // prettier-ignore
   let bestA: string | null = null, bestE = false, bestL = 0;
-  for (const action of Object.keys(shortcuts))
-    for (const c of Array.isArray(shortcuts[action]) ? shortcuts[action] : [shortcuts[action]]) {
+  for (const id of Object.keys(shortcuts))
+    for (const c of Array.isArray(shortcuts[id]) ? shortcuts[id] : [shortcuts[id]]) {
       // prettier-ignore
-      const required = cleanKeyCombo(c), isE = required === combo, len = required.split("+").length;
-      if (matchKeys(required, combo, s, true) && (!bestA || (isE && !bestE) || (isE === bestE && len > bestL))) (bestA = action), (bestE = isE), (bestL = len);
+      const req = c && cleanKeyCombo(c), isE = req === combo, len = req ? req.split("+").length : 0;
+      if (c && matchKeys(req, combo, stm, false) && (!bestA || (isE && !bestE) || (isE === bestE && len > bestL))) (bestA = id), (bestE = isE), (bestL = len);
     }
   return (terms.action = bestA), terms;
 }
@@ -162,16 +162,20 @@ export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, 
 /**
  * Formats one or many combos for human-readable UI labels, prepends " " for fluid appending.
  * @param combo Combo or combo list.
+ * @param keyFn Function to format each combo.
  * @returns Display label (for example: `" (ctrl+z) or (meta+z)"`).
  */
-export const formatKeyForDisplay = (combo: string | string[] = ""): string => ` ${(Array.isArray(combo) ? combo : [combo]).map((c) => `(${cleanKeyCombo(c).replace(" ", "space")})`).join(" or ")}`;
+export const formatKeyTooltip = (combo: string | string[] = "", keyFn = (c = "") => cleanKeyCombo(c).replace(" ", "space")): string => {
+  const combined = combo?.length ? (Array.isArray(combo) ? combo.map(keyFn).join(" or ") : keyFn(combo)) : "";
+  return combined ? ` (${combined})` : "";
+};
 
 /**
  * Formats an action-shortcuts map for display labels.
  * @param keyShortcuts Action to combo(s) map.
  * @returns Action to display-label map.
  */
-export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string | string[]> = {}, formatter = formatKeyForDisplay): Record<string, string> {
+export function formatKeyShortcutsTooltip(keyShortcuts: Record<string, string | string[]> = {}, formatter = formatKeyTooltip): Record<string, string> {
   const shortcuts: Record<string, string> = {};
   for (const action of Object.keys(keyShortcuts)) shortcuts[action] = formatter(keyShortcuts[action]);
   return shortcuts;
@@ -179,10 +183,8 @@ export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string
 
 /**
  * Converts combo text into WAI-ARIA `aria-keyshortcuts` format.
- * - When `formatted=true`, `s` is treated as already display-formatted text.
- * - When `formatted=false`, `s` is treated as raw combo(s) and is first formatted.
  * @param s Combo text or combo list.
- * @param formatted Whether `s` is already display-formatted.
+ * @param format Whether to format to tooltip first.
  * @returns Normalized aria-keyshortcuts string.
  * @example
  * parseForARIAKS(" (ctrl+z) or (meta+z)")
@@ -191,9 +193,9 @@ export function formatKeyShortcutsForDisplay(keyShortcuts: Record<string, string
  * parseForARIAKS(["ctrl+z", "meta+z"], false)
  * // => "Control+z Meta+z"
  */
-export function parseForARIAKS(s: string | string[] = "", formatted = true) {
+export function parseForARIAKS(s: string | string[] = "", format = true) {
   const m = { ctrl: "Control", cmd: "Meta", space: "Space", plus: "+" };
-  return (formatted && !Array.isArray(s) ? s : formatKeyForDisplay(s))
+  return (!format && !Array.isArray(s) ? s : formatKeyTooltip(s))
     .toLowerCase()
     .replace(/[()]/g, "") // 1. Remove parens
     .replace(/\bor\b/g, " ") // 2. Replace "or" with the REQUIRED space

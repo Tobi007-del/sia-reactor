@@ -1,5 +1,6 @@
 import { Paths, PathValue } from "@defs/obj";
 import { ReactorModuleId, ReactorModulePathConfig } from "../base";
+import type { Payload, REvent } from "@defs/reactor";
 
 /** The DNA of a specific moment in time. Records the 'Desire' (Intent) or the 'Fact' (State). */
 export interface HistoryEntry<T extends object = any, P extends Paths<T> = Paths<T>> {
@@ -48,9 +49,10 @@ export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T
   /** Hook: Intercept/Modify history entries before they're added to the timeline.
    * @param entry The history entry that is about to be added to the timeline.
    * @param history The reference to the history state, which can be used for context-aware heuristics (e.g., bundling rapid entries).
+   * @param event The raw payload or event that triggered this history entry (useful for metadata checks like `e.light` or `e.agentic`).
    * @returns The modified entry to be added, or `false` to block the entry from being added to the timeline.
    */
-  beforeEntry?: (entry: HistoryEntry<T, P>, history: Array<HistoryNode<T, P>>) => HistoryEntry<T, P> | boolean;
+  beforeEntry?: (entry: HistoryEntry<T, P>, history: Array<HistoryNode<T, P>>, event: REvent<any, P> | Payload<any, P>) => HistoryEntry<T, P> | boolean;
   /** Hook: Invoked after a history frame (entry or transaction) is applied during teleportation.
    * @param frame The history frame that was applied, which can be either a single entry or a grouped transaction.
    * @param forward A boolean indicating the direction of teleportation, where `true` means moving forward in time and `false` means moving backward in time.

@@ -16,30 +16,27 @@ export type NoTraverse =
   | EventTarget; // Covers Window, Document, Node, Element, etc.
 
 /** Dot-path union for traversable keys in `T` up to depth `D{11}`. */
-export type Paths<T, S extends string = ".", D extends number = MaxDepth> = [D] extends [0]
+export type Paths<T, S extends string = ".", D extends number = MaxDepth, L extends boolean = false> = [D] extends [0]
   ? never // Circuit Breaker Triggered
   : T extends NoTraverse
   ? never
   : T extends readonly (infer U)[]
-  ? `${Extract<keyof T, number>}` | `${Extract<keyof T, number>}${S}${Paths<U, S, PrevDepth[D]>}` // or just `${number}`
+  ? (L extends true ? never : `${Extract<keyof T, number>}`) | `${Extract<keyof T, number>}${S}${Paths<U, S, PrevDepth[D], L>}` // or just `${number}`
   : {
-      [K in keyof T & (string | number)]: T[K] extends Primitive
+      [K in keyof T & (string | number)]: T[K] extends NoTraverse
         ? `${K}`
-        : `${K}` | `${K}${S}${Paths<T[K], S, PrevDepth[D]>}`;
+        : (L extends true ? never : `${K}`) | `${K}${S}${Paths<T[K], S, PrevDepth[D], L>}`;
     }[keyof T & (string | number)];
+
 /** Wildcard path (`*`) or concrete dot-path. */
-export type WildPaths<T, S extends string = "."> = "*" | Paths<T, S>;
+export type WildPaths<T, S extends string = ".", L extends boolean = false> = "*" | Paths<T, S, MaxDepth, L>;
+
 /** Child-path expansion for a path up to relative depth `D{x}`. */
-export type ChildPaths<
-  T,
-  P extends WildPaths<T, S>,
-  S extends string = ".",
-  D extends number = MaxDepth
-> = Extract<
-  Paths<T, S, AddDepth<PathDepth<P, S>, D>>,
+export type ChildPaths<T, P extends WildPaths<T, S>, S extends string = ".", D extends number = MaxDepth, L extends boolean = false> = Extract<
+  Paths<T, S, AddDepth<PathDepth<P, S>, D>, L>,
   `${P extends "*" ? "" : P}${P extends "*" ? "" : S}${string}`
 > &
-  Paths<T, S>; // bundlers can shutup and just believe
+  Paths<T, S, MaxDepth, L>; // bundlers can shutup and just believe
 
 /** Leaf key name extracted from a path. */
 export type PathKey<T, P extends string = Paths<T>, S extends string = "."> = P extends "*"
@@ -80,22 +77,14 @@ export type Unflatten<T extends object, S extends string = "."> = UnionToInterse
     [K in keyof T & string]: UnflattenKey<K, T[K], S>;
   }[keyof T & string]
 >;
-type UnflattenKey<
-  K extends string,
-  V,
-  S extends string
-> = K extends `${infer Head}${S}${infer Tail}`
+type UnflattenKey<K extends string, V, S extends string> = K extends `${infer Head}${S}${infer Tail}`
   ? { [P in Head]: UnflattenKey<Tail, V, S> }
   : { [P in K]: V };
 
 // --- Helpers ---
 
 /** Calculates the depth of a dot-separated path with a max of D{11}. */
-export type PathDepth<
-  P extends string,
-  S extends string = ".",
-  D extends number = MaxDepth
-> = P extends "*"
+export type PathDepth<P extends string, S extends string = ".", D extends number = MaxDepth> = P extends "*"
   ? 0
   : [D] extends [0]
   ? 0
@@ -104,27 +93,17 @@ export type PathDepth<
   : 1;
 
 /** Last segment of a path. */
-export type PathLeaf<
-  P extends string,
-  S extends string = "."
-> = P extends `${infer _Head}${S}${infer Tail}` ? PathLeaf<Tail, S> : P;
+export type PathLeaf<P extends string, S extends string = "."> = P extends `${infer _Head}${S}${infer Tail}` ? PathLeaf<Tail, S> : P;
 
 /** Path without its last segment. */
-export type PathBranch<
-  P extends string,
-  S extends string = "."
-> = P extends `${infer Head}${S}${infer Tail}`
+export type PathBranch<P extends string, S extends string = "."> = P extends `${infer Head}${S}${infer Tail}`
   ? Tail extends `${string}${S}${string}`
     ? `${Head}${S}${PathBranch<Tail, S>}`
     : Head
   : never;
 
 /** Converts a union of types into an intersection of types. */
-export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
-  k: infer I
-) => void
-  ? I
-  : never;
+export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
 
 /** Adds two depths together, respecting the max depth{11}. */
 export type AddDepth<A extends number, B extends number> = [B] extends [0]
@@ -134,11 +113,7 @@ export type AddDepth<A extends number, B extends number> = [B] extends [0]
   : AddDepth<NextDepth[A], PrevDepth[B]>;
 
 /** Subtracts depth B from A, respecting the min depth{0}. */
-export type SubtractDepth<A extends number, B extends number> = [B] extends [0]
-  ? A
-  : [A] extends [0]
-  ? 0
-  : SubtractDepth<PrevDepth[A], PrevDepth[B]>;
+export type SubtractDepth<A extends number, B extends number> = [B] extends [0] ? A : [A] extends [0] ? 0 : SubtractDepth<PrevDepth[A], PrevDepth[B]>;
 
 // --- "It's not that deep" WARRIORS ---
 
@@ -215,9 +190,9 @@ export type DeepReadonly<T, D extends number = MaxDepth> = [D] extends [0]
 
 /** Config for defining recursive limits for all parts of the application */
 export interface DepthConfig {
-  max: 7; // 19 is observed bundler recursive limit for state trees so, raise amm!!!
-  prev: [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-  next: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  max: 7; // 18 is observed bundler recursive limit for state trees so, raise amm!!!
+  prev: [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+  next: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 }
 /** Current recursive depth limit */
 export type MaxDepth = DepthConfig["max"];

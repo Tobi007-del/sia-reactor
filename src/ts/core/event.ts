@@ -26,24 +26,18 @@ export class ReactorEvent<T extends object, P extends WildPaths<T> = WildPaths<T
   public eventPhase = ReactorEvent.NONE;
   /** Current event type for the active propagation path, use immediately if async */
   public type!: Payload<T, P>["type"];
-  /** Current target context for the active propagation path, use immediately if async. Also use to survive future object shape changes from nesting for a path callback. */
-  public currentTarget!: Payload<T, P>["currentTarget"];
-  /** Original event target context. */
-  public readonly target!: Payload<T, P>["target"];
-  /** Root reactive object for this event instance wave. */
-  public readonly root!: Payload<T, P>["root"];
-  /** The `Reactor` instance that dispatched this event instance. */
-  public readonly reactor!: Payload<T, P>["reactor"];
+
+  public currentTarget!: Payload<T, P>["currentTarget"]; /** Current target context for the active propagation path, use immediately if async. Also survives future shape changes from nesting for a path callback. */
+  public readonly target!: Payload<T, P>["target"]; /** Original event target context. */
+  public readonly root!: Payload<T, P>["root"]; /** Root reactive object for this event instance wave. */
+  public readonly reactor!: Payload<T, P>["reactor"]; /** The `Reactor` instance that dispatched this event instance. */
   /** Whether resolve/reject intent semantics are allowed for this event instance. */
   public readonly rejectable!: boolean;
   /** Original event type before propagation remapping. */
   public readonly staticType: Exclude<Payload<T, P>["type"], "update">;
-  /** Original target path for this event instance wave. */
-  public readonly path: Payload<T, P>["target"]["path"];
-  /** Current value at the event target path. */
-  public readonly value: Payload<T, P>["target"]["value"];
-  /** Previous value at the event target path. */
-  public readonly oldValue: Payload<T, P>["target"]["oldValue"];
+  public readonly path: Payload<T, P>["target"]["path"]; /** Original target path for this event instance wave. */
+  public readonly value: Payload<T, P>["target"]["value"]; /** Current value at the event target path. */
+  public readonly oldValue: Payload<T, P>["target"]["oldValue"]; /** Previous value at the event target path. */
   /** Whether this event instance wave can bubble back up to ancestors or just capture down. */
   public readonly bubbles: boolean = false;
   /** Whether this event instance wave can capture down to descendants or just bubble up. */

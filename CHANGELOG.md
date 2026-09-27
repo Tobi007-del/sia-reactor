@@ -1,5 +1,17 @@
 # sia-reactor
 
+## 0.0.46
+
+### Patch Changes
+
+- Bug fixes
+
+## 0.0.45
+
+### Patch Changes
+
+- Tx bugs fixes nd keys enhancements
+
 ## 0.0.44
 
 ### Patch Changes

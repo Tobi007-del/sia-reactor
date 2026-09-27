@@ -1,5 +1,11 @@
-import { defineConfig } from "tsup";
+import { defineConfig, type Options } from "tsup";
 import { existsSync, mkdirSync, copyFileSync } from "node:fs";
+
+const isProd = process.env.NODE_ENV === "production" || process.argv.includes("--prod");
+const config: Options = {
+  minify: isProd,
+  sourcemap: !isProd,
+};
 
 export default defineConfig([
   {
@@ -7,6 +13,7 @@ export default defineConfig([
     format: ["cjs", "esm"],
     dts: true,
     clean: true,
+    ...config,
     async onSuccess() {
       const keys = ["time-travel-console"];
       keys.forEach((key) => {
@@ -21,5 +28,7 @@ export default defineConfig([
     globalName: "sia",
     external: ["react"],
     dts: true,
+    env: { NODE_ENV: isProd ? "production" : "development" },
+    ...config,
   },
 ]);

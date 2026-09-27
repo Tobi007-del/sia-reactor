@@ -26,7 +26,10 @@ export interface ReactivePreferences {
   prefix?: string;
   /** Suffix applied to exposed `Reactor` methods. */
   suffix?: string;
-  /** Methods that should keep their original names when affixes are used. */
+  /** Reactor methods that may collide with keys already existing in your state object.
+   * - If an affix (prefix/suffix) is provided, ONLY these methods will receive the affix (others keep original names).
+   * - If no affix is provided, these methods will be completely skipped and not attached.
+   */
   whitelist?: readonly Method[]; // keys you're already using
 }
 
@@ -41,8 +44,14 @@ export interface ReactivePreferences {
  * const state = reactive({ user: { name: "Kosi" } });
  * state.set("user.name", (v) => v);
  * @example
- * const rtr = new Reactor({ count: 0 });
- * const state = reactive(rtr);
+ * // State already has a 'tick' that's a number so prefix the reactor's method to avoid collision.
+ * const state = reactive({ tick: 0 }, { debug: true }, { prefix: "$", whitelist: ["tick"] });
+ * state.$tick(); // reactor's 'tick' method is prefixed
+ * state.set("tick", (v) => v + 1); // 'set' keeps its original name
+ * // Instead, don't prefix and just skip the 'tick' method entirely.
+ * const state = reactive({ tick: 0 }, { debug: false }, { whitelist: ["tick"] });
+ * state.tick; // number, not the reactor's method
+ * // You could also rename the property on your State object, e.g. to "clock".
  */
 export function reactive<T extends object, const P extends ReactivePreferences | undefined = undefined>(target: T, build?: ReactorBuild<T>, preferences: P = NIL): T extends Reactive<infer _O, infer _P> ? T : Reactive<T, P> {
   if ("__Reactor__" in target) return target as any;
