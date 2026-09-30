@@ -159,7 +159,7 @@ export function parsePathObj<T extends Record<string, any>, const S extends stri
 export function matchPaths(paths: Array<string | RegExp>, target: string): boolean {
   for (let i = 0, len = paths.length; i < len; i++) {
     const p = paths[i];
-    if (typeof p !== "string" ? !!p?.test?.(target) : target === p || target.startsWith(p + ".")) return true;
+    if (typeof p !== "string" ? p.test(target) : target === p || target.startsWith(p + ".")) return true;
   }
   return false;
 }
@@ -361,13 +361,20 @@ export function resetMeta(key: keyof ReactorMeta) {
   CTX.meta = null;
 }
 
+/**  Checks if an object is empty (has no own enumerable properties). */
+export const isEmpty = (value: Object, preserveContext = CTX.defaults.preserveContext) => {
+  if (preserveContext) return Reflect.ownKeys(value).length === 0;
+  for (const _ in value) return false;
+  return true;
+};
+
 /**
  * The Master Path Engine: Single-pass, zero-allocation DFS tree extraction. Perfectly mirrors the TS `Paths` and `ChildPaths` generics.
  * - Root paths: `getPaths(store)`
  * - Child paths: `getPaths(store, "settings.audio")`
  * - Next words (typeahead): `getPaths(store, "settings", { depth: 1 })`
  */
-export function getPaths<T extends object, const S extends string = ".", P extends WildPaths<T, S> = "*", D extends number = MaxDepth, L extends boolean = false>(obj: T, path: P = "*" as P, config: { depth?: D; separator?: S; leavesOnly?: L } & typeof CTX.defaults = CTX.defaults as any): (P extends "*" ? Paths<T, S, D, L> : ChildPaths<T, P, S, D, L>)[] {
+export function getPaths<T extends object, const S extends string = ".", P extends WildPaths<T, S> = "*", D extends number = MaxDepth, L extends boolean = false>(obj: T, path: P = "*" as P, config: { depth?: D; separator?: S; leavesOnly?: L; atomic?: boolean; preserveContext?: boolean } = CTX.defaults as any): (P extends "*" ? Paths<T, S, D, L> : ChildPaths<T, P, S, D, L>)[] {
   const target = path === "*" ? obj : getPath(obj, path as any, config.separator as S),
     result: string[] = [],
     seen = new Set<any>();
@@ -380,10 +387,12 @@ export function getPaths<T extends object, const S extends string = ".", P exten
       const key = String(keys[i]),
         val = (curr as any)[key],
         newPath = currPath ? `${currPath}${config.separator || "."}${key}` : key,
-        isNode = canHandle(val, config);
-      if (!config.leavesOnly || !isNode) result.push(newPath);
+        isArray = Array.isArray(val),
+        isNode = canHandle(val, config) && !((config.atomic ?? true) && isArray),
+        isEmptyNode = isNode && (isArray ? val.length === 0 : isEmpty(val, config.preserveContext));
+      if (!config.leavesOnly || !isNode || isEmptyNode) result.push(newPath);
       try {
-        isNode && walk(val, newPath, depth + 1);
+        isNode && !isEmptyNode && walk(val, newPath, depth + 1);
       } catch (e) {
         if (e instanceof RangeError) throw e;
       }

@@ -54,20 +54,19 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     if (this.state.currentFrame < this.state.history.length) this.state.history.length = this.state.currentFrame; // we must destroy the "Alternate Future" (the redo stack) before recording.
     const timestamp = (e as any).timestamp ?? performance.now(); // payloads dont allow timestamps since they're sync, but you asked for it
     let en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: !this.config.mirrorReads || !e.target.path.includes("intent") ? e.reactor.snapshot(false, e.target.oldValue) : getPath(e.reactor.core as any, e.target.path.replace("intent", "state")), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.lastTimestamp } as HistoryEntry<any, P>;
-    !e.target.hadKey && (en.hadKey = false);
+    !e.target.hadKey && (en.hadKey = false); // reducing serialized bloat
+    const px = (e.tx && this.txMap.get(e.tx)) || null; // previous tx
     if (this.config.beforeEntry) {
       const res = this.config.beforeEntry(en, this.state.history, e); // the power to edit history as it unfolds, or even block it entirely if you want to be a total control freak about it
-      if (res === false) return; // blocking entry
+      if (res === false) return px && (this.resolveTx(e.tx!, timestamp, en.deltat, px), force(() => (this.state.currentFrame = this.state.currentFrame))), void (this.lastTimestamp = timestamp); // block entry but stretch end time if tx exists, and update metronome
       if (res && res !== true) en = res;
     }
-    e.tx ? this.resolveTx(e.tx, timestamp, en.deltat).nodes.push(en) : this.state.history.push(en); // hybrid so no more space than necessary
-    force(() => (this.state.currentFrame = this.state.history.length), !!e.tx); // Lock the playhead to the absolute present, re-trigger if tx
+    e.tx ? this.resolveTx(e.tx, timestamp, en.deltat, px).nodes.push(en) : this.state.history.push(en); // hybrid so no more space than necessary
+    force(() => (this.state.currentFrame = this.state.history.length), !!e.tx), (this.lastTimestamp = timestamp); // Lock the playhead to the absolute present, re-trigger if tx, Update the metronome
     while (this.state.history.length > this.config.limit) this.state.history.shift(), this.state.currentFrame--; // Drop the oldest memories if we exceed the limit, `>` since after entering
-    this.lastTimestamp = timestamp; // Update the metronome with the timestamp of the latest event
   }
   /** Resolves and constructs the hierarchical ancestry for nested transactions as they bubble up from the depths. */
-  protected resolveTx(tx: Transaction, timestamp: number, deltat: number): HistoryTransaction<T, P> {
-    let px = this.txMap.get(tx); // previous tx
+  protected resolveTx(tx: Transaction, timestamp: number, deltat: number, px: HistoryTransaction<T, P> | null | undefined = this.txMap.get(tx)): HistoryTransaction<T, P> {
     if (px) return (px.end = timestamp), tx.parent && this.resolveTx(tx.parent, timestamp, deltat), px; // this is peak analytical metrics here
     this.txMap.set(tx, (px = { id: tx.id, label: tx.label, nodes: [], deltat: 0, start: timestamp, end: timestamp } as HistoryTransaction<T, P>)); // start and end unlike singular mutations
     return tx.parent ? this.resolveTx(tx.parent, timestamp, deltat).nodes.push(px) : ((px.deltat = deltat), this.state.history.push(px)), px;

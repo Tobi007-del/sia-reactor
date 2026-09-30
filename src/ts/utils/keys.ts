@@ -16,6 +16,8 @@ export interface KeysSettings {
   rankedMatch?: boolean;
   /** Combos that are allowed as pass-through key actions. */
   whitelist?: string[];
+  /** Actions or clean keys permitted to match even when heavy modifiers are held. */
+  moddedlist?: string[];
 }
 
 /** Canonical key-combo structure used by parser and serializer helpers. */
@@ -92,16 +94,17 @@ export function cleanKeyCombo(combo: string | string[], mods: string[] = KEYS_MO
  * @param actual Actual combo string.
  * @param strict Whether to require exact match.
  * @param clean Whether to clean the actual combo.
+ * @param modded Allow modifiers in non-strict mode. "Shift" is always allowed.
  * @returns `true` when match succeeds.
  */
-export function matchKeys(required: string | string[], actual: string, strict = false, clean = true): boolean {
+export function matchKeys(required: string | string[], actual: string, strict = false, clean = true, modded = false): boolean {
   if (clean) actual = cleanKeyCombo(actual);
   const match = (req: string, actual: string): boolean => {
     req = cleanKeyCombo(req);
     if (strict) return req === actual;
     const reqs = req.split("+"),
       reals = actual.split("+");
-    for (const mod of KEYS_CMODS) if (reals.includes(mod) && !reqs.includes(mod)) return false; // no unrequested heavy mods
+    if (!modded) for (const mod of KEYS_CMODS) if (reals.includes(mod) && !reqs.includes(mod)) return false; // no unrequested heavy mods
     return reqs.every((k) => reals.includes(k));
   };
   return Array.isArray(required) ? required.some((req) => match(req, actual)) : match(required, actual);
@@ -116,19 +119,19 @@ export function matchKeys(required: string | string[], actual: string, strict = 
  */
 export function getTermsForKey(combo: string, settings: KeysSettings): { override: boolean; block: boolean; whitelisted: boolean; action: string | null } {
   const terms = { override: false, block: false, whitelisted: false, action: null as string | null },
-    { overrides = [], shortcuts = {}, blocks = [], strictMatch: stm = false, rankedMatch: ram = true, whitelist = [] } = settings || {};
+    { overrides = [], shortcuts = {}, blocks = [], strictMatch: stm = false, rankedMatch: ram = true, whitelist = [], moddedlist = [] } = settings || {};
   combo = cleanKeyCombo(combo);
   if (matchKeys(overrides, combo, stm, false)) terms.override = true;
   if (matchKeys(blocks, combo, stm, false)) terms.block = true;
-  if (matchKeys(whitelist, combo, false)) terms.whitelisted = true;
-  if (!ram) return (terms.action = Object.keys(shortcuts).find((id) => shortcuts[id] && matchKeys(shortcuts[id], combo, stm, false)) || null), terms;
+  if (whitelist.some((w, _, __, cw = cleanKeyCombo(w)) => matchKeys(cw, combo, stm, false, moddedlist.includes(cw)))) terms.whitelisted = true;
+  if (!ram) return (terms.action = Object.keys(shortcuts).find((id) => shortcuts[id] && matchKeys(shortcuts[id], combo, stm, false, moddedlist.includes(id))) || null), terms;
   // prettier-ignore
   let bestA: string | null = null, bestE = false, bestL = 0;
   for (const id of Object.keys(shortcuts))
     for (const c of Array.isArray(shortcuts[id]) ? shortcuts[id] : [shortcuts[id]]) {
       // prettier-ignore
       const req = c && cleanKeyCombo(c), isE = req === combo, len = req ? req.split("+").length : 0;
-      if (c && matchKeys(req, combo, stm, false) && (!bestA || (isE && !bestE) || (isE === bestE && len > bestL))) (bestA = id), (bestE = isE), (bestL = len);
+      if (c && matchKeys(req, combo, stm, false, moddedlist.includes(id)) && (!bestA || (isE && !bestE) || (isE === bestE && len > bestL))) (bestA = id), (bestE = isE), (bestL = len);
     }
   return (terms.action = bestA), terms;
 }

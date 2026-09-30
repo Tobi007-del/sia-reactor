@@ -7,6 +7,7 @@
   --sia-tt-text: rgb(from var(--sia-brand-color) calc((r * 0.2) + 218) calc((g * 0.11) + 214) calc((b * 0.09) + 214));
   --sia-tt-muted: rgb(from var(--sia-brand-color) calc((r * 0.24) + 150) calc((g * 0.14) + 146) calc((b * 0.12) + 146));
   --sia-tt-input-bg: rgb(from var(--sia-brand-color) calc((r * 0.08) + 8) calc((g * 0.07) + 8) calc((b * 0.09) + 10) / 0.66);
+  --sia-tt-font-size: 0.73rem;
   position: relative;
 }
 
@@ -61,7 +62,7 @@
   background: var(--sia-tt-bg-soft);
   border: 1px solid var(--sia-tt-line);
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: var(--sia-tt-font-size);
   line-height: 1.1;
   padding: 5px 8px;
   cursor: pointer;
@@ -77,7 +78,7 @@
   background: var(--sia-tt-bg);
   border: 1px solid var(--sia-tt-line);
   border-radius: 12px;
-  padding: 12px;
+  padding: 12px 8px;
   display: grid;
   gap: 8px;
   color: var(--sia-tt-text);
@@ -118,7 +119,7 @@
   color: var(--sia-tt-text);
   border-radius: 8px;
   padding: 5px 8px;
-  font-size: 0.75rem;
+  font-size: var(--sia-tt-font-size);
   line-height: 1.1;
   cursor: pointer;
 }
@@ -153,7 +154,7 @@
 
 .sia-tt-status-box .muted {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--sia-tt-font-size);
 }
 
 .sia-tt-filter-row {
@@ -208,7 +209,7 @@
   border: 1px solid var(--sia-tt-line);
   background: var(--sia-tt-input-bg);
   color: var(--sia-tt-text);
-  font-size: 0.75rem;
+  font-size: var(--sia-tt-font-size);
   border-radius: 8px;
   padding: 8px;
 }
@@ -231,7 +232,7 @@
   color: var(--sia-tt-muted);
 }
 
-.sia-tt-config-row:not(:has(:focus)) > :is(#o, *) {
+.sia-tt-config-row:not(:has(:focus-visible)) > :is(#o, *) {
   color: var(--sia-tt-muted);
   opacity: 0.5;
 }
@@ -240,7 +241,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.7rem;
+  font-size: calc(var(--sia-tt-font-size) * 0.9);
 }
 .sia-tt-check input[type="checkbox"] {
   width: 0.65rem;
@@ -248,7 +249,7 @@
 
 .sia-tt-footnote {
   margin: 2px 2px 0;
-  font-size: 0.72rem;
+  font-size: calc(var(--sia-tt-font-size) * 0.9);
   line-height: 1.35;
   color: var(--sia-tt-muted);
   text-align: right;

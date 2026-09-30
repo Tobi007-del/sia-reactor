@@ -1,5 +1,29 @@
 # sia-reactor
 
+## 0.0.50
+
+### Patch Changes
+
+- Keys modifier logic fixes
+
+## 0.0.49
+
+### Patch Changes
+
+- Keys modifiers allowance
+
+## 0.0.48
+
+### Patch Changes
+
+- Getpaths bug fixes
+
+## 0.0.47
+
+### Patch Changes
+
+- fix: aggressive vite minification stripping regex check from matchPaths
+
 ## 0.0.46
 
 ### Patch Changes
