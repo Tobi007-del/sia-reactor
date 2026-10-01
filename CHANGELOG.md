@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.51
+
+### Patch Changes
+
+- Persist fix on destroy
+
 ## 0.0.50
 
 ### Patch Changes

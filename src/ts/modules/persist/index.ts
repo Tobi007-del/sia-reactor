@@ -128,7 +128,7 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
   }
 
   protected onDestroy(): void {
-    this.config.strict && this.state.hydrated && !this.config.disabled && this.adapter?.set(this.config.key, this.getPayload()); // One last save before the lights go out
+    this.config.strict && this.state.hydrated && !this.config.disabled && this.persist(); // One last save before the lights go out
   }
 }
 
