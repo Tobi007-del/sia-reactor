@@ -2,6 +2,7 @@ import { BaseReactorModule, ReactorModuleId } from "../base";
 import { StorageAdapter, LocalStorageAdapter, AsyncStorageAdapter, type StorageAdapterConstructor } from "./storage";
 import { fanoutOptsArr, setPath, deletePath, getPath, fanout, mergeObjs, parseEvtOpts, hasPath } from "@utils/obj";
 import { setTimeout } from "@utils/fn";
+import { mirror } from "@utils/str";
 import { Reactor } from "@core/reactor";
 import type { REvent } from "@defs/reactor";
 import { NOOP } from "@core/consts";
@@ -106,9 +107,9 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     let ticks = this.tickMap.get(rid);
     for (let i = 0, len = blacks.length; i < len; i++) deletePath(entry, blacks[i]);
     for (let i = 0, len = whites.length; i < len; i++) {
-      let mirror: string | undefined;
+      let _mirror: string;
       const _path = whites[i],
-        path = (!this.config.mirrorWrites || !_path.includes("state") || !hasPath(rtr.core, (mirror = _path.replace("state", "intent"))) ? _path : mirror) as any,
+        path = (!this.config.mirrorWrites || (_mirror = mirror(_path, false)) === _path || !hasPath(rtr.core, _mirror) ? _path : _mirror) as any,
         value = getPath(entry, _path);
       value !== undefined && (set(path, getPath(rtr.core, path), value), (ticks || (this.tickMap.set(rid, (ticks = [])), ticks)).push(path));
     }

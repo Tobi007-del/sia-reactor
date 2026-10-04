@@ -6,6 +6,7 @@ import { setTimeout } from "@utils/fn";
 import { clamp } from "@utils/num";
 import type { Paths } from "@defs/obj";
 import { JSONReplacer, JSONReviver } from "../persist/storage";
+import { mirror } from "@utils/str";
 import { TimeTravelConfig, TimeTravelState, HistoryTransaction, HistoryEntry, HistoryNode } from "./types";
 import { TIME_TRAVEL_MODULE_BUILD } from "./build";
 import { Transaction } from "./transaction";
@@ -53,7 +54,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     if (!this.state.paused || !(this._tracking ?? this.state.tracking) || e.silent) return;
     if (this.state.currentFrame < this.state.history.length) this.state.history.length = this.state.currentFrame; // we must destroy the "Alternate Future" (the redo stack) before recording.
     const timestamp = (e as any).timestamp ?? performance.now(); // payloads dont allow timestamps since they're sync, but you asked for it
-    let en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: !this.config.mirrorReads || !e.target.path.includes("intent") ? e.reactor.snapshot(false, e.target.oldValue) : getPath(e.reactor.core as any, e.target.path.replace("intent", "state")), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.lastTimestamp } as HistoryEntry<any, P>;
+    let en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: !this.config.mirrorReads ? e.reactor.snapshot(false, e.target.oldValue) : getPath(e.reactor.core as any, mirror(e.target.path)), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.lastTimestamp } as HistoryEntry<any, P>;
     !e.target.hadKey && (en.hadKey = false); // reducing serialized bloat
     const px = (e.tx && this.txMap.get(e.tx)) || null; // previous tx
     if (this.config.beforeEntry) {
@@ -120,9 +121,9 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   protected applyNode(node: HistoryNode<T, P>, forward = true): void {
     if ("nodes" in node) for (let len = node.nodes.length, i = forward ? 0 : len - 1; forward ? i < len : i >= 0; forward ? i++ : i--) this.applyNode(node.nodes[i], forward);
     else {
-      let mirror: string | undefined;
+      let _mirror: string;
       const rtr = this.deps.get(node.rid) || this.deps.values().next().value!, // owner of the node index for (single||multi)-reactor management
-        path = (!this.config.mirrorWrites || !node.path.includes("state") || !hasPath(rtr.core, (mirror = node.path.replace("state", "intent"))) ? node.path : mirror) as any;
+        path = (!this.config.mirrorWrites || (_mirror = mirror(node.path, false)) === node.path || !hasPath(rtr.core, _mirror) ? node.path : _mirror) as any;
       if (forward) node.type === "delete" ? deletePath(rtr.core, path) : setPath(rtr.core, path, deepClone(node.to, rtr.config));
       else node.hadKey === false ? deletePath(rtr.core, path) : setPath(rtr.core, path, deepClone(node.from, rtr.config));
     }

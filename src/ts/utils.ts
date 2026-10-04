@@ -9,3 +9,5 @@ export { onAllMethods, bindAllMethods, guardAllMethods, guardMethod } from "@uti
 export { type KeysSettings, type KeyStruct, KEYS_BLOCKS, KEYS_MODS, KEYS_CMODS, KEYS_ALIAS, parseKeyCombo, stringifyKeyEvent, cleanKeyCombo, matchKeys, getTermsForKey, keyEventAllowed, formatKeyTooltip, formatKeyShortcutsTooltip, parseForARIAKS } from "@utils/keys";
 
 export { createEl, assignEl, getActiveEl } from "@utils/dom";
+
+export { mirror } from "@utils/str";

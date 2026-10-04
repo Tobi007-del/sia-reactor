@@ -2,6 +2,7 @@ import type { Reactor } from "@core/reactor";
 import { getReactor, type Reactive, reactive } from "@core/mixins";
 import { isObj, matchPaths, getPath, setPath, nuke } from "@utils/obj";
 import { guardMethod, guardAllMethods } from "@utils/methd";
+import { mirror } from "@utils/str";
 import { ReactorModulePathConfig, ReactorModuleConstructor, ReactorModuleId, ModulePaths } from "./types";
 
 /**
@@ -136,7 +137,7 @@ export abstract class BaseReactorModule<T extends object = any, Config extends P
         const paths = this.getPaths(rid);
         for (let i = 0, len = paths.length; i < len; i++) {
           const _path = paths[i],
-            path = (!this.config.mirrorReads || !_path.includes("intent") ? _path : _path.replace("intent", "state")) as any;
+            path = (!this.config.mirrorReads ? _path : mirror(_path)) as any;
           setPath(val, _path, getPath(snap, path));
         }
       }
