@@ -11,7 +11,7 @@
 export function setTimeout(handler: TimerHandler, timeout?: number, ...args: any[]) {
   const sig = args[0] instanceof AbortSignal ? args.shift() : undefined;
   if (sig?.aborted) return -1;
-  const win: Window = args[0] instanceof Window ? args.shift() : window;
+  const win: Window = (args[0] && typeof args[0] === "object" && args[0].window === args[0]) ? args.shift() : window;
   if (!sig) return win.setTimeout(handler, timeout, ...args);
   const id = win.setTimeout(() => (sig.removeEventListener("abort", kill), "string" === typeof handler ? new Function(handler) : handler(...args)), timeout),
     kill = () => win.clearTimeout(id);
@@ -28,7 +28,7 @@ export function setTimeout(handler: TimerHandler, timeout?: number, ...args: any
 export function setInterval(handler: TimerHandler, timeout?: number, ...args: any[]) {
   const sig = args[0] instanceof AbortSignal ? args.shift() : undefined;
   if (sig?.aborted) return -1;
-  const win: Window = args[0] instanceof Window ? args.shift() : window,
+  const win: Window = (args[0] && typeof args[0] === "object" && args[0].window === args[0]) ? args.shift() : window,
     id = win.setInterval(handler, timeout, ...args);
   return sig?.addEventListener("abort", () => win.clearInterval(id), { once: true }), id;
 }
