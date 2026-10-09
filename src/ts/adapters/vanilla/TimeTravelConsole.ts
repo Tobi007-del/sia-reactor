@@ -9,7 +9,7 @@ import { effect } from "./effect";
 
 const keys = {
   blocks: KEYS_BLOCKS,
-  overrides: ["Space", "Home", "End", "Escape", "Delete"],
+  // overrides: ["Space", "Home", "End", "Escape", "Delete"], // Playing "God"
   shortcuts: { undo: ["Ctrl+z", "Cmd+z"], redo: ["Ctrl+y", "Ctrl+Shift+z", "Cmd+Shift+z"], genesis: "Home", trackUntrack: "t", ending: "End", playPause: "Space", rewind: "Shift+Space", closeOverlay: "Escape", clrHistory: "Delete", export: "e", import: "i", clear: "c" },
 };
 
@@ -41,7 +41,6 @@ export class TimeTravelConsole {
   public readonly host: HTMLElement;
   private clups: Array<() => void> = [];
   private keydown: (e: KeyboardEvent) => void;
-  private keyup: (e: KeyboardEvent) => void;
 
   /** Creates a docked TimeTravel overlay bound to a module instance.
    * @param time TimeTravel module instance that owns timeline operations.
@@ -103,9 +102,8 @@ export class TimeTravelConsole {
     filters.append((filterBox.append((filterRow1.append(whitelistLabel, whitelist), filterRow1), (filterRow2.append(blacklistLabel, blacklist), filterRow2)), filterBox));
     panel.append(title, status, (row1.append(playPause, rewind, genesis), row1), (row2.append(undo, redo, trackUntrack, stride), row2), payload, (row3.append(speed, range), row3), filters, (row4.append(exp, imp, clr), row4), io, (row5.append(delay, limit, (read.append(readBox, " Read Mirror"), read), (write.append(writeBox, " Write Mirror"), write)), row5), (foot.prepend(stats), foot.append(link), foot));
     this.host.append(toggle, panel);
-    this.keydown = (e, can = this.state.open && (this.config.devOnly ? CTX.isDevEnv : true), a = can && keyEventAllowed(e, keys)) => (a && e.stopImmediatePropagation(), a === "undo" ? this.time.undo(this.state.stride) : a === "redo" ? this.time.redo(this.state.stride) : a === "genesis" ? this.time.jumpTo(0) : a === "trackUntrack" ? this.time[s.tracking ? "untrack" : "track"]() : a === "ending" ? this.time.jumpTo(s.history.length) : a === "rewind" ? this.time.rewind() : a === "playPause" ? this.time[s.paused ? "play" : "pause"]() : a === "clrHistory" ? this.time.clear() : a === "closeOverlay" ? (this.state.open = false) : a === "export" ? (this.state.import = this.time.export(null, 2)) : a === "import" ? this.state.import.trim().length && this.time.import(this.state.import) : a === "clear" && (this.state.import = ""));
-    this.keyup = (e, can = this.state.open && (this.config.devOnly ? CTX.isDevEnv : true), a = can && keyEventAllowed(e, keys)) => a && e.stopImmediatePropagation();
-    window.addEventListener("keydown", this.keydown), window.addEventListener("keyup", this.keyup);
+    this.keydown = (e, can = this.state.open && (this.config.devOnly ? CTX.isDevEnv : true), a = can && keyEventAllowed(e, keys)) => (a && (e.preventDefault(), e.stopImmediatePropagation()), a === "undo" ? this.time.undo(this.state.stride) : a === "redo" ? this.time.redo(this.state.stride) : a === "genesis" ? this.time.jumpTo(0) : a === "trackUntrack" ? this.time[s.tracking ? "untrack" : "track"]() : a === "ending" ? this.time.jumpTo(s.history.length) : a === "rewind" ? this.time.rewind() : a === "playPause" ? this.time[s.paused ? "play" : "pause"]() : a === "clrHistory" ? this.time.clear() : a === "closeOverlay" ? (this.state.open = false) : a === "export" ? (this.state.import = this.time.export(null, 2)) : a === "import" ? this.state.import.trim().length && this.time.import(this.state.import) : a === "clear" && (this.state.import = ""));
+    window.addEventListener("keydown", this.keydown, { capture: true });
     const sync = [
       effect(() => (this.config.color ? host.style.setProperty("--sia-tt-color", this.config.color) : host.style.removeProperty("--sia-tt-color"))),
       effect(() => {
@@ -150,7 +148,7 @@ export class TimeTravelConsole {
 
   destroy() {
     for (const clup of this.clups) clup();
-    window.removeEventListener("keydown", this.keydown), window.removeEventListener("keyup", this.keyup);
+    window.removeEventListener("keydown", this.keydown, { capture: true });
     this.host.remove(), nuke(this), --TimeTravelConsole.count;
   }
 }

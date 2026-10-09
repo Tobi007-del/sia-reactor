@@ -117,11 +117,11 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
   }
 
   /** Clears persisted payload for this module instance by removing the stored key from the adapter and drops any pending save. */
-  public clear(): void {
+  public clear(): boolean | Promise<boolean> {
     clearTimeout(this.saveTimeoutId);
     this.saveTimeoutId = -1; // ignore all writes until next microtask
     queueMicrotask(() => (this.saveTimeoutId = 0)); // hack to delay saves till next tick
-    this.adapter?.remove(this.config.key);
+    return this.adapter?.remove(this.config.key);
   }
   /** Clears stored `cache` for this module instance, call after all attachments that use the cached hydration payload. */
   public clearCache(): void {

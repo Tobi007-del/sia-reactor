@@ -1,5 +1,17 @@
 # sia-reactor
 
+## 0.0.54
+
+### Patch Changes
+
+- Bug fixes nd key enhancements
+
+## 0.0.53
+
+### Patch Changes
+
+- Clearing returns promise now
+
 ## 0.0.52
 
 ### Patch Changes

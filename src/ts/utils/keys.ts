@@ -2,18 +2,20 @@ import { getActiveEl } from "./dom";
 
 /** Keyboard matching configuration used by utility helpers. */
 export interface KeysSettings {
-  /** Disables key handling when true. */
+  /** Disables key handling when true. Defaults to `false`. */
   disabled?: boolean;
   /** Combos that should call `preventDefault` when matched. */
   overrides?: string[];
   /** Action map from action id to combo or combo list. */
   shortcuts?: Record<string, string | string[]>;
-  /** Combos that should be rejected immediately. */
+  /** Combos that should be rejected immediately. Defaults to `KEYS_BLOCKS`. */
   blocks?: string[];
-  /** Enables exact combo matching instead of subset matching. */
+  /** Enables exact combo matching instead of subset matching. Defaults to `false`. */
   strictMatch?: boolean;
-  /** Ranks shortcut matches by exactness before insertion order. Enabled by default. */
+  /** Ranks shortcut matches by exactness before insertion order. Defaults to `true`. */
   rankedMatch?: boolean;
+  /** Links keyup events to their pair keydown event, returning `false` if propagation was stopped. Defaults to `false`. */
+  linkedPhase?: boolean;
   /** Combos that are allowed as pass-through key actions. */
   whitelist?: string[];
   /** Actions or clean keys permitted to match even when heavy modifiers are held. */
@@ -150,9 +152,16 @@ export function getTermsForKey(combo: string, settings: KeysSettings): { overrid
  */
 export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, settings: S): false | (S["shortcuts"] extends object ? keyof S["shortcuts"] : never) | (S["whitelist"] extends readonly string[] ? (string[] extends S["whitelist"] ? never : S["whitelist"][number]) : never) {
   if (settings.disabled) return false;
+  if (settings.linkedPhase)
+    if (e.type === "keydown") downKeys.set(e.code, e);
+    else if (e.type === "keyup") {
+      const down = downKeys.get(e.code);
+      setTimeout(() => downKeys.delete(e.code), 0); // Delay deletion so peer/parent listeners in the event chain can still read it
+      if (!down || down.cancelBubble) return false; // If !down, a child element stopped the keydown before it reached us. If down.cancelBubble, a peer listener stopped it.
+    }
   const activeEl = getActiveEl((e.target as Node)?.ownerDocument); // shadow DOM proof
   if ((e.key === " " || e.key === "Enter") && activeEl?.matches("button,input[type='button'],input[type='submit']")) return false;
-  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable],[role]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
+  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
   const combo = stringifyKeyEvent(e),
     { override, block, action, whitelisted } = getTermsForKey(combo, settings);
   if (block) return false;
@@ -161,6 +170,7 @@ export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, 
   if (whitelisted) return e.key.toLowerCase() as any;
   return false;
 }
+const downKeys = new Map<string, KeyboardEvent>();
 
 /**
  * Formats one or many combos for human-readable UI labels, prepends " " for fluid appending.
