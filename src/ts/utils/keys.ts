@@ -17,7 +17,7 @@ export interface KeysSettings {
   /** Links keyup events to their pair keydown event, returning `false` if propagation was stopped. Defaults to `false`. */
   linkedPhase?: boolean;
   /** Combos that are allowed as pass-through key actions. */
-  whitelist?: string[];
+  whitelist?: readonly string[];
   /** Actions or clean keys permitted to match even when heavy modifiers are held. */
   moddedlist?: string[];
 }
@@ -150,7 +150,7 @@ export function getTermsForKey(combo: string, settings: KeysSettings): { overrid
  * @param settings Matching settings.
  * @returns Action id, pass-through key, or `false` when denied.
  */
-export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, settings: S): false | (S["shortcuts"] extends object ? keyof S["shortcuts"] : never) | (S["whitelist"] extends readonly string[] ? (string[] extends S["whitelist"] ? never : S["whitelist"][number]) : never) {
+export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, settings: S): false | (S["shortcuts"] extends object ? keyof S["shortcuts"] : never) | (S["whitelist"] extends readonly string[] ? (string[] extends S["whitelist"] ? never : Lowercase<S["whitelist"][number]>) : never) {
   if (settings.disabled) return false;
   if (settings.linkedPhase)
     if (e.type === "keydown") downKeys.set(e.code, e);

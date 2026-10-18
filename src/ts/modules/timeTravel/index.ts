@@ -1,12 +1,13 @@
 import { BaseReactorModule, ReactorModuleId } from "../base";
 import { Reactor } from "@core/reactor";
 import type { Payload, REvent } from "@defs/reactor";
-import { setPath, deletePath, fanout, deepClone, getPath, hasPath, force } from "@utils/obj";
+import { setPath, deletePath, fanout, deepClone, getPath, hasPath } from "@utils/obj";
 import { setTimeout } from "@utils/fn";
 import { clamp } from "@utils/num";
 import type { Paths } from "@defs/obj";
 import { JSONReplacer, JSONReviver } from "../persist/storage";
 import { mirror } from "@utils/str";
+import { withMeta, force } from "@utils/meta";
 import { TimeTravelConfig, TimeTravelState, HistoryTransaction, HistoryEntry, HistoryNode } from "./types";
 import { TIME_TRAVEL_MODULE_BUILD } from "./build";
 import { Transaction } from "./transaction";
@@ -21,12 +22,12 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   public static readonly moduleName: string = "timeTravel";
   public readonly txMap = new WeakMap<Transaction, HistoryTransaction<T, P>>();
   public readonly evtOpts = { capture: true, signal: this.signal }; // capture for change immediacy devoid of UI lag
-  public lastTimestamp = 0;
-  protected playbackSeq = 0;
-  protected _tracking?: boolean; // `untrack()` must `track()` in the same session to prevent hydration bugs
+  public timestamp = 0;
+  protected playSeq = 0;
+  protected tracked?: boolean; // `untrack()` must `track()` in the same session to prevent hydration bugs
 
   constructor(config?: Partial<TimeTravelConfig<T, P>>, rtr?: Reactor<T>) {
-    super({ ...TIME_TRAVEL_MODULE_BUILD, ...config } as TimeTravelConfig<T, P>, rtr, { initialState: {}, history: [], tracking: true, currentFrame: 0, paused: true, forward: true } as TimeTravelState<T, P>);
+    super({ ...TIME_TRAVEL_MODULE_BUILD, ...config } as TimeTravelConfig<T, P>, rtr, { initialState: {}, history: [], tracking: true, currentFrame: 0, paused: true, forward: true, playbackRate: 1 } as TimeTravelState<T, P>);
   }
 
   // ===========================================================================
@@ -34,7 +35,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   // ===========================================================================
   public override wire(): void {
     // Variables Assignment
-    this.lastTimestamp = performance.now();
+    this.timestamp = performance.now();
     // Config Listeners
     this.config.on("whitelist", this.handleWhitelist, { signal: this.signal, init: true });
     this.config.on("synchronous", this.handleSynchronous, { signal: this.signal });
@@ -51,71 +52,81 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   protected override onPath = this.record;
   /** Chronicling the lifecycle of the system, Captures the essence of every mutation wave that bubbles up. */
   protected record(e: REvent<any, P> | Payload<any, P>, rid = this.rids.get(e.reactor)!): void {
-    if (!this.state.paused || !(this._tracking ?? this.state.tracking) || e.silent) return;
-    if (this.state.currentFrame < this.state.history.length) this.state.history.length = this.state.currentFrame; // we must destroy the "Alternate Future" (the redo stack) before recording.
+    if (!this.state.paused || !(this.tracked ?? this.state.tracking) || e.silent) return;
+    this.prune(); // destroy the "Alternate Future" (the redo stack) before recording
     const timestamp = (e as any).timestamp ?? performance.now(); // payloads dont allow timestamps since they're sync, but you asked for it
-    let en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: !this.config.mirrorReads ? e.reactor.snapshot(false, e.target.oldValue) : getPath(e.reactor.core as any, mirror(e.target.path)), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.lastTimestamp } as HistoryEntry<any, P>;
+    let _mirror: string,
+      en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: e.reactor.snapshot(false, !this.config.mirrorReads || (_mirror = mirror(e.target.path)) === e.target.path || !hasPath(e.reactor.core, _mirror) ? e.target.oldValue : getPath(e.reactor.core as any, _mirror)), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.timestamp } as HistoryEntry<any, P>;
     !e.target.hadKey && (en.hadKey = false); // reducing serialized bloat
     const px = (e.tx && this.txMap.get(e.tx)) || null; // previous tx
     if (this.config.beforeEntry) {
       const res = this.config.beforeEntry(en, this.state.history, e); // the power to edit history as it unfolds, or even block it entirely if you want to be a total control freak about it
-      if (res === false) return px && (this.resolveTx(e.tx!, timestamp, en.deltat, px), force(() => (this.state.currentFrame = this.state.currentFrame))), void (this.lastTimestamp = timestamp); // block entry but stretch end time if tx exists, and update metronome
+      if (res === false) return px && (px.nodes.length ? this.resolveTx(e.tx!, timestamp, en.deltat, px) : (px.end = timestamp), force(() => (this.state.currentFrame = this.state.history.length))), void (this.timestamp = timestamp); // block entry but stretch end time if tx exists, and update metronome
       if (res && res !== true) en = res;
     }
     e.tx ? this.resolveTx(e.tx, timestamp, en.deltat, px).nodes.push(en) : this.state.history.push(en); // hybrid so no more space than necessary
-    force(() => (this.state.currentFrame = this.state.history.length), !!e.tx), (this.lastTimestamp = timestamp); // Lock the playhead to the absolute present, re-trigger if tx, Update the metronome
+    force(() => (this.state.currentFrame = this.state.history.length), !!e.tx), (this.timestamp = timestamp); // Lock the playhead to the absolute present, re-trigger if tx, Update the metronome
     while (this.state.history.length > this.config.limit) this.state.history.shift(), this.state.currentFrame--; // Drop the oldest memories if we exceed the limit, `>` since after entering
   }
   /** Resolves and constructs the hierarchical ancestry for nested transactions as they bubble up from the depths. */
   protected resolveTx(tx: Transaction, timestamp: number, deltat: number, px: HistoryTransaction<T, P> | null | undefined = this.txMap.get(tx)): HistoryTransaction<T, P> {
-    if (px) return (px.end = timestamp), tx.parent && this.resolveTx(tx.parent, timestamp, deltat), px; // this is peak analytical metrics here
+    if (px) return (px.end = timestamp), !px.nodes.length ? (tx.parent ? this.resolveTx(tx.parent, timestamp, deltat).nodes.push(px) : this.state.history.push(px)) : tx.parent && this.resolveTx(tx.parent, timestamp, deltat), px; // this is peak analytical metrics here
     this.txMap.set(tx, (px = { id: tx.id, label: tx.label, nodes: [], deltat: 0, start: timestamp, end: timestamp } as HistoryTransaction<T, P>)); // start and end unlike singular mutations
     return tx.parent ? this.resolveTx(tx.parent, timestamp, deltat).nodes.push(px) : ((px.deltat = deltat), this.state.history.push(px)), px;
   }
 
   /** Resumes the passive recording of state changes. */
   public track(): void {
-    (this.state.tracking = this._tracking = true), !this.state.paused && this.automove(this.state.forward); // peak init assist :)
+    (this.state.tracking = this.tracked = true), !this.state.paused && this.automove(this.state.forward); // peak init assist :)
   }
-  /**
-   * Pauses the passive recording of state changes and returns `this`. Useful to call at creation time to avoid recording hydration waves.
-   * @returns `this`
-   */
+  /** Pauses the passive recording of state changes and returns `this`. Useful to call at creation time to avoid recording hydration waves. @returns `this` */
   public untrack() {
-    this.lastTimestamp = performance.now(); // Reset delta-t baseline
-    return (this.state.tracking = this._tracking = false), this;
+    this.timestamp = performance.now(); // Reset delta-t baseline
+    return (this.state.tracking = this.tracked = false), this;
   }
 
-  /** Clears timeline history and resets the playhead and initial snapshots to current reactor state. */
-  public clear(): void {
+  /**
+   * Prunes history nodes from the given index (or currentFrame) upwards, discarding the future redo stack.
+   * @param index Starting history index to prune upwards from, defaults to `this.state.currentFrame`.
+   */
+  public prune(index: number = this.state.currentFrame): void {
+    const target = clamp(0, index, this.state.history.length);
+    if (this.state.history.length > target) {
+      (this.state.history.length = target), this.state.currentFrame > target && (this.state.currentFrame = target);
+    }
+  }
+
+  /** Resets timeline history, playhead, and initial snapshots to current reactor state. */
+  public reset(): void {
     this.pause();
     this.state.history.length = this.state.currentFrame = 0;
     for (const [rid, rtr] of this.deps) this.state.initialState[rid] = this.getPayload(rtr, rid);
-    this.lastTimestamp = performance.now();
+    this.timestamp = performance.now();
   }
 
   // ===========================================================================
   // THE TIME MACHINE (Manual Controls)
   // ===========================================================================
   /**
-   * Instant state reconstruction (teleport) to a given history frame index.
+   * Instant state reconstruction (teleport) to a given history node index (frame).
    * Applies recorded nodes forward or backward until the playhead reaches `index`.
-   * @param index Target history frame index to jump to (clamped to bounds).
-   * @param keepShield If true, keep the paused shield active after applying.
+   * @param index Target history node index to jump to (clamped to bounds).
+   * @param live If `true`, keep the paused shield active after applying.
    */
-  public jumpTo(index: number = 0, keepShield = false): void {
+  public jumpTo(index: number = 0, live = false): void {
     this.state.paused = false;
     const target = clamp(0, index, this.state.history.length), // Ensure bounds
       forward = target > this.state.currentFrame;
-    // Glide until the playhead locks exactly onto the target
-    while (this.state.currentFrame !== target) {
-      const frame = this.state.history[forward ? this.state.currentFrame : this.state.currentFrame - 1]; // Grab the correct frame (Current unapplied frame if going forward, previous applied frame if going backward)
-      this.applyNode(frame, forward); // 2. Apply the frame's mutations to the reactor(s)
-      forward ? this.state.currentFrame++ : this.state.currentFrame--; // 3. Move the playhead
-      this.config.onApply(frame, forward); // here you go, dev!
-    }
+    withMeta({ timeTravel: `${forward ? "forward" : "backward"}${live ? "-live" : ""}` as const }, () => {
+      while (this.state.currentFrame !== target) {
+        let node = this.state.history[forward ? this.state.currentFrame : this.state.currentFrame - 1], // Grab the correct node (Current unapplied node if going forward, previous applied node if going backward)
+          res = this.config.beforeApply?.(node, this.state.history, forward); // the power to edit history as it re-enacts
+        res !== false && this.applyNode(res && res !== true ? res : node, forward); // 2. Apply the node's mutations to the reactor(s)
+        forward ? this.state.currentFrame++ : this.state.currentFrame--; // 3. Move the playhead
+      } // Glide until the playhead locks exactly onto the target
+    });
     for (const rtr of this.deps.values()) rtr.tick(); // Batch Flush: Flush ALL teleportation ripples before dropping the shield!
-    if (!keepShield) this.state.paused = true;
+    if (!live) this.state.paused = true;
   }
   /** Re-enacting a node that represents a point in time be it a transaction of transactions or a solitary mutation. */
   protected applyNode(node: HistoryNode<T, P>, forward = true): void {
@@ -124,14 +135,13 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
       let _mirror: string;
       const rtr = this.deps.get(node.rid) || this.deps.values().next().value!, // owner of the node index for (single||multi)-reactor management
         path = (!this.config.mirrorWrites || (_mirror = mirror(node.path, false)) === node.path || !hasPath(rtr.core, _mirror) ? node.path : _mirror) as any;
-      if (forward) node.type === "delete" ? deletePath(rtr.core, path) : setPath(rtr.core, path, deepClone(node.to, rtr.config));
-      else node.hadKey === false ? deletePath(rtr.core, path) : setPath(rtr.core, path, deepClone(node.from, rtr.config));
+      (forward ? node.type === "delete" : node.hadKey === false) ? deletePath(rtr.core, path) : setPath(rtr.core, path, deepClone(forward ? node.to : node.from, rtr.config));
     }
   }
 
   /**
-   * Step through time by a number of frames.
-   * @param stride Number of frames to move the playhead by.
+   * Step through time by a number of nodes.
+   * @param stride Number of nodes to move the playhead by.
    * @param forward Direction: `true` for forward, `false` for backward.
    */
   public step(stride = 1, forward = true): void {
@@ -144,7 +154,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   }
   /**
    * Step back in time (undo).
-   * @param stride Optional `number` of frames to undo.
+   * @param stride Optional `number` of nodes to undo.
    */
   public undo(stride?: unknown): void {
     this.step(arguments.length && "number" === typeof stride ? stride : 1, false);
@@ -155,7 +165,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   }
   /**
    * Step forward in time (redo).
-   * @param stride Optional `number` of frames to redo.
+   * @param stride Optional `number` of nodes to redo.
    */
   public redo(stride?: unknown): void {
     this.step(arguments.length && "number" === typeof stride ? stride : 1, true);
@@ -170,16 +180,16 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
    * @returns Promise<void> Resolves when playback completes or is paused/stopped.
    */
   public async automove(forward = true): Promise<void> {
-    const seq = ++this.playbackSeq;
+    const seq = ++this.playSeq;
     this.state.paused = false;
     this.state.forward = forward;
-    while (seq === this.playbackSeq && !this.state.paused && (forward ? this.state.currentFrame < this.state.history.length : this.state.currentFrame > 0)) {
+    while (seq === this.playSeq && !this.state.paused && (forward ? this.state.currentFrame < this.state.history.length : this.state.currentFrame > 0)) {
       const dFrame = this.state.history[this.state.currentFrame + (forward ? 0 : -1)], // chronology
-        delay = Math.min(("nodes" in dFrame ? dFrame.end - dFrame.start + dFrame.deltat : dFrame.deltat) / this.config.playbackRate, this.config.maxPlaybackDelay);
+        delay = Math.min(("nodes" in dFrame ? dFrame.end - dFrame.start + dFrame.deltat : dFrame.deltat) / this.state.playbackRate, this.config.maxPlaybackDelay);
       if (delay > 0) await new Promise<void>((res) => setTimeout(res, delay, this.signal));
-      if (!this.state.paused) this.jumpTo(this.state.currentFrame + (forward ? 1 : -1), true);
+      !this.state.paused && this.jumpTo(this.state.currentFrame + (forward ? 1 : -1), true);
     }
-    if (seq === this.playbackSeq) this.state.paused = true;
+    if (seq === this.playSeq) this.state.paused = true;
   }
   /**
    * Start chronological re-enactment of the session (play forward).
@@ -195,10 +205,9 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   public rewind(): Promise<void> {
     return this.automove(false);
   }
-
   /** Pause any ongoing playback or rewinding. */
   public pause(): void {
-    this.playbackSeq++, (this.state.paused = true);
+    this.playSeq++, (this.state.paused = true);
   }
 
   // ===========================================================================
@@ -220,7 +229,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
    */
   public import(json: string, reviver?: JSONReviver, start = this.state.currentFrame, resume = !this.state.paused, forward = this.state.forward): void {
     setPath(this.state, "*", JSON.parse(json, reviver) as TimeTravelState<T, P>);
-    this.lastTimestamp = performance.now();
+    this.timestamp = performance.now();
     this.state.paused = false; // Shield import reconstruction from being recorded into history
     for (const [rid, rtr] of this.deps) {
       const paths = this.getPaths(rid);
@@ -234,5 +243,13 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   }
 }
 
+export type TimeTravelDirection = "forward" | "backward" | "forward-live" | "backward-live";
 export type * from "./types";
 export * from "./build";
+
+declare module "@defs/reactor" {
+  interface ReactorMeta {
+    /** Direction and playback mode of time-travel state mutations. */
+    timeTravel?: TimeTravelDirection;
+  }
+}

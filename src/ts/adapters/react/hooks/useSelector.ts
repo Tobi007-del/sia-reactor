@@ -40,12 +40,12 @@ export function useSelector<T extends object, R>(target: T | Reactor<T> | Reacti
     eqRef = useRef(eq),
     optsRef = useRef(options);
   (selRef.current = sel), (eqRef.current = eq), (optsRef.current = options); // preventing staleness
-  const subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = notify), optsRef.current), [atrkr]);
   const getSnapshot = useCallback(() => {
-    const next = withTracker(atrkr, () => selRef.current(rtr.core), rtr);
-    return eqRef.current(sliceRef.current, next) ? sliceRef.current! : (sliceRef.current = next);
-  }, [atrkr, rtr]);
-  const slice = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+      const next = withTracker(atrkr, () => selRef.current(rtr.core), rtr);
+      return eqRef.current(sliceRef.current, next) ? sliceRef.current! : (sliceRef.current = next);
+    }, [atrkr, rtr]),
+    subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = notify), optsRef.current), [atrkr]),
+    slice = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return useISOLayoutEffect(() => atrkr.callback(notifyRef.current, optsRef.current), [atrkr, slice]), slice;
 }
 
@@ -70,12 +70,12 @@ export function useAnySelector<R>(sel: () => R, eq = Object.is, options: EffectO
     eqRef = useRef(eq),
     optsRef = useRef(options);
   (selRef.current = sel), (eqRef.current = eq), (optsRef.current = options); // preventing staleness
-  const subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = notify), optsRef.current), [atrkr]);
   const getSnapshot = useCallback(() => {
-    const next = withTracker(atrkr, () => selRef.current());
-    return eqRef.current(sliceRef.current, next) ? sliceRef.current! : (sliceRef.current = next);
-  }, [atrkr]);
-  const slice = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+      const next = withTracker(atrkr, () => selRef.current());
+      return eqRef.current(sliceRef.current, next) ? sliceRef.current! : (sliceRef.current = next);
+    }, [atrkr]),
+    subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = notify), optsRef.current), [atrkr]),
+    slice = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return useISOLayoutEffect(() => atrkr.callback(notifyRef.current, optsRef.current), [atrkr, slice]), slice;
 }
 
@@ -114,11 +114,11 @@ export function useSelectorSnapshot<T extends object, R>(target: T | Reactor<T> 
     optsRef = useRef(options);
   rtr.config.referenceTracking = rtr.config.smartCloning = true;
   (optsRef.current = options), (selRef.current = sel), (eqRef.current = eq); // preventing staleness
-  const subscribe = useCallback((notify: () => void) => (atrkr.callback((notifyRef.current = notify), optsRef.current), () => atrkr.cleanup()), [atrkr]);
   const getSnapshot = useCallback(() => {
-    const next = selRef.current(atrkr.tracked(rtr.snapshot()));
-    return eqRef.current(sliceRef.current, next) ? sliceRef.current! : (sliceRef.current = next);
-  }, [atrkr]);
-  const slice = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+      const next = selRef.current(atrkr.tracked(rtr.snapshot()));
+      return eqRef.current(sliceRef.current, next) ? sliceRef.current! : (sliceRef.current = next);
+    }, [atrkr]),
+    subscribe = useCallback((notify: () => void) => (atrkr.callback((notifyRef.current = notify), optsRef.current), () => atrkr.cleanup()), [atrkr]),
+    slice = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return useISOLayoutEffect(() => atrkr.callback(notifyRef.current, optsRef.current), [atrkr, slice]), slice;
 } // Nothing much here, just rebuilding "Zustand.js" `useSelector`, Proof of Concept: Reactor is a core of cores

@@ -1,10 +1,12 @@
 import { CTX, NIL, INERTIA } from "@core/consts";
 import { ReactorEvent } from "@core/event";
 import type { Pure } from "@core/mixins";
-import { Payload, Reactor, ReactorMeta } from "@defs/reactor";
+import { Payload, Reactor } from "@defs/reactor";
 import { getReactor } from "@core/mixins";
 import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue, ChildPaths, MaxDepth, Paths, DeepPartial } from "@defs/obj";
 import { transaction, txId } from "@modules/timeTravel/transaction";
+import { silence } from "@modules/timeTravel/silence";
+import { force } from "./meta";
 
 export let arrRegex = /^([^\[\]]+)\[(\d+)\]$/;
 
@@ -230,25 +232,9 @@ export function fanout(a: any, b?: any, c?: any, d?: any): void {
     if (atomic && Array.isArray(news) && isPath) setPath(state, path, cloneSets ? deepClone(news) : news), (getPath(state, path).length = news.length); // ping commoners
     else walk(target, merge ? mergeObjs(olds, news, opts) : news, depth === true ? Infinity : depth);
   };
-  force(() => transaction(func, txLabel ?? `${path ? `Fanout -> '${path}'` : `Fanout`} (Tx ${txId + 1})`), CTX.usingForce || isEvPd); // if event or payload, already written values can bypass equality checks
+  force(() => transaction(func, txLabel ?? `${path ? `Fanout -> '${path}'` : `Fanout`} (Tx ${txId + 1})`), CTX.meta?.forced || isEvPd); // if event or payload, already written values can bypass equality checks
 }
 export const fanoutOptsArr = ["merge", "depth", "atomic", "skipUndef"] as const;
-
-/**
- * Executes a task while forcing all reactive writes to bypass equality checks.
- * @param task The mutation logic to execute.
- * @param bool Override for ease of use in dynamic usecases, defaults to `true`
- * @returns The result of the task.
- */
-export function force<T>(task: () => T, bool = true): T {
-  const prev = CTX.usingForce;
-  CTX.usingForce = bool;
-  try {
-    return task();
-  } finally {
-    CTX.usingForce = prev;
-  }
-}
 
 /**
  * Deep-merges object-like values, does necessary checks so use without doubts. Only `o2` keys are checked when `skipUndef` is true.
@@ -326,41 +312,6 @@ export function nuke(target: any): void {
   }
 }
 
-// Metadata Operations
-
-/**
- * Allows extending the context payload of a `Reactor` operation with custom meta properties for the duration of a function execution.
- * Temporarily merges provided meta into `CTX.meta` for the duration of `fn`. Restores the previous meta object after `fn` completes (even on `throw`).
- * @param props Meta properties to merge into the current context.
- */
-export function withMeta<T>(props: ReactorMeta, fn: () => T): T {
-  CTX.meta ??= {};
-  const cache: Record<string, any> = {};
-  for (const key of Object.keys(props)) {
-    cache[key] = (CTX.meta as any)[key];
-    (CTX.meta as any)[key] = (props as any)[key];
-  }
-  try {
-    return fn();
-  } finally {
-    for (const key of Object.keys(cache)) {
-      if (cache[key] === undefined) resetMeta(key as any);
-      else (CTX.meta as any)![key] = cache[key];
-    }
-  }
-}
-
-/**
- * Resets a specific property in the global context meta and nullifies it if empty to stay on the fast path.
- * @param key The key of the meta property to be deleted before nullifying.
- */
-export function resetMeta(key: keyof ReactorMeta) {
-  if (!CTX.meta) return;
-  delete CTX.meta[key];
-  for (const _ in CTX.meta) return;
-  CTX.meta = null;
-}
-
 /**  Checks if an object is empty (has no own enumerable properties). */
 export const isEmpty = (value: Object, preserveContext = CTX.defaults.preserveContext) => {
   if (preserveContext) return Reflect.ownKeys(value).length === 0;
@@ -436,7 +387,7 @@ export function createReactorSync(rA: Reactor<any> | object, rB: Reactor<any> | 
     (origin = src), setPath(dest, (destP ? (syncP ? `${destP}.${syncP}` : destP) : syncP || "*") as any, isArr ? deepClone(obj) : val), (origin = null);
   };
   const initA = prefixA ? getPath(rtrA.core, prefixA as any) : rtrA.core; // primary hydrates secondary on setup
-  if (initA !== undefined) fanout(rtrB.core, (prefixB || "*") as any, initA, { depth: 1, cloneSets: true, txLabel: `ReactorSync: ${prefixA}^ <-> ${prefixB}` });
+  if (initA !== undefined) silence(() => fanout(rtrB.core, (prefixB || "*") as any, initA, { depth: 1, cloneSets: true, txLabel: `ReactorSync: ${prefixA}^ <-> ${prefixB}` }));
   const clupA = rtrA.watch("*", sync(0, rtrB.core, prefixA, prefixB), { signal }),
     clupB = rtrB.watch("*", sync(1, rtrA.core, prefixB, prefixA), { signal });
   return () => (clupA(), clupB());

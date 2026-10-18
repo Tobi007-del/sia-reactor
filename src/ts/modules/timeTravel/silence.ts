@@ -1,4 +1,4 @@
-import { withMeta } from "@utils/obj";
+import { withMeta } from "@utils/meta";
 
 /**
  * Executes `fn` with `silent: true` merged into all current `Reactor` payloads.

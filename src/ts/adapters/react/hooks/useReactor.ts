@@ -36,8 +36,8 @@ export function useReactor<T extends object>(target: T | Reactor<T> | Reactive<T
     notifyRef = useRef<() => void>(NOOP); // The uSES trigger bridge
   optsRef.current = options; // preventing staleness
   atrkr.unblock(rtr), queueMicrotask(() => CTX.autotracker === atrkr && (CTX.autotracker = prevTrkr)); // in case of abort
-  const subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = () => (versionRef.current++, notify()))), [atrkr]);
-  const getSnapshot = useCallback(() => versionRef.current, []);
+  const getSnapshot = useCallback(() => versionRef.current, []),
+    subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = () => (versionRef.current++, notify()))), [atrkr]);
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot); // Feed React a primitive number to track tearing, zero cloning.
   return useISOLayoutEffect(() => ((CTX.autotracker = prevTrkr), atrkr.callback(notifyRef.current, optsRef.current)), [atrkr]), rtr.core;
 }
@@ -58,8 +58,8 @@ export function useAnyReactor(options: EffectOptions = NIL): void {
     notifyRef = useRef<() => void>(NOOP);
   optsRef.current = options; // preventing staleness
   atrkr.unblock(), queueMicrotask(() => CTX.autotracker === atrkr && (CTX.autotracker = prevTrkr)); // in case of abort
-  const subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = () => (versionRef.current++, notify()))), [atrkr]);
-  const getSnapshot = useCallback(() => versionRef.current, []);
+  const getSnapshot = useCallback(() => versionRef.current, []),
+    subscribe = useCallback((notify: () => void) => atrkr.callback((notifyRef.current = () => (versionRef.current++, notify()))), [atrkr]);
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot); // Feed React a primitive number to track tearing, zero cloning.
   useISOLayoutEffect(() => ((CTX.autotracker = prevTrkr), atrkr.callback(notifyRef.current, optsRef.current)), [atrkr]);
 }
@@ -93,9 +93,9 @@ export function useReactorSnapshot<T extends object>(target: T | Reactor<T> | Re
     optsRef = useRef(options);
   rtr.config.referenceTracking = rtr.config.smartCloning = true;
   optsRef.current = options; // preventing staleness
-  const subscribe = useCallback((notify: () => void) => (atrkr.callback((notifyRef.current = notify), optsRef.current), () => atrkr.cleanup()), [atrkr]);
-  const getSnapshot = () => rtr.snapshot();
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const proxy = useMemo(() => atrkr.tracked(snapshot), [atrkr, snapshot]);
+  const getSnapshot = () => rtr.snapshot(),
+    subscribe = useCallback((notify: () => void) => (atrkr.callback((notifyRef.current = notify), optsRef.current), () => atrkr.cleanup()), [atrkr]),
+    snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot),
+    proxy = useMemo(() => atrkr.tracked(snapshot), [atrkr, snapshot]);
   return useISOLayoutEffect(() => atrkr.callback(notifyRef.current, optsRef.current), [atrkr, proxy]), proxy;
 } // Nothing much here, just rebuilding "Valtio.js" `useSnapshot`, Proof of Concept: Reactor is a core of cores

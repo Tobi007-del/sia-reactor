@@ -3,7 +3,7 @@ import { Reactor } from "./reactor";
 import type { ReactorBuild, Inert, Intent, Live, State, Volatile, Stable } from "@defs/reactor";
 
 /** `Reactor` method names exposed on objects returned by `reactive()`. */
-export const methods = ["tick", "stall", "nostall", "get", "gonce", "noget", "set", "sonce", "noset", "delete", "donce", "nodelete", "watch", "wonce", "nowatch", "on", "once", "off", "snapshot", "use", "reset", "destroy"] as const;
+export const methods = ["tick", "stall", "nostall", "get", "noget", "set", "noset", "delete", "nodelete", "watch", "wonce", "nowatch", "on", "once", "off", "snapshot", "use", "reset", "destroy"] as const;
 
 type Method = (typeof methods)[number];
 type Prefix<P extends ReactivePreferences | undefined> = P extends { prefix?: infer X extends string } ? X : "";

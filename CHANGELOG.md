@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.56
+
+### Patch Changes
+
+- Time travel physics accuracy and project-wide enhancements
+
 ## 0.0.55
 
 ### Patch Changes

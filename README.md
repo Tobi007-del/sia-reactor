@@ -167,7 +167,7 @@ All methods are available on `Reactor` instances or objects wrapped in `reactive
 
 #### **Listeners (Asynchronous/Batched UI Observers)**
 - **`on(path, callback, options)` <-> `off(path, callback, options)`**: Attach DOM-style event listeners that respect `depth`. Supports `{ capture: true, depth: 1, once: true, init: true }`.
-- **`once(path, callback, options)`**: Fires once and self-destructs, others have too: `sonce(...)`, `gonce(...)`, `donce(...)`, `wonce(...)`.
+- **`once(path, callback, options)`**: Fires once and self-destructs, watch has too: `wonce(...)`.
 
 #### **Lifecycle & Utilities**
 - **`tick(path)`**: Forces a synchronous flush of the batch queue for a specific path.
@@ -419,7 +419,7 @@ The `target` and `currentTarget` objects give you absolute surgical awareness of
 }
 ```
 
-#### The Power of the `TERMINATOR` (Symbol.for("S.I.A_TERMINATOR"))
+#### The Power of the `TERMINATOR` (Symbol.for("SIA_TERMINATOR"))
 Because `set` and `delete` mediators execute *before* the memory is written, you have the power to alter reality or stop it entirely using the `TERMINATOR` symbol.
 
 ```javascript
@@ -524,7 +524,7 @@ rtr.on("todos", (e: REvent<User, "todos", 1>) => {
 #### 1. Transactions & Grouping
 By default, every mutation is recorded as a single frame. For UI gestures like dragging a slider, you want to group hundreds of rapid mutations into a single Undo/Redo step for the `TimeTravelModule`. 
 
-Transactions natively support **deep nesting** and preserve your semantic labels. When paired with `createTxPathMerger`, duplicate paths inside these envelopes are compressed in-flight with zero overhead.
+Transactions natively support **deep nesting** and preserve your semantic labels. When paired with `createTxPathMerger`, duplicate paths inside these envelopes are compressed in-flight.
 
 ```javascript
 import { transaction, startTx, endTx } from "sia-reactor/modules";
@@ -617,10 +617,15 @@ silence(() => {
   player.state.volume = 100; 
 }); // Useful for internal side-effects that shouldn't ruin the undo/redo history.
 
-// 2. Custom Meta Injection: Injects data seamlessly into the ReactorEvent payload for listeners to read.
+// 2. The Force Wrapper: Executes mutations that bypasses equality checks. same as withMeta({ forced: true }, () => ...)
+force(() => {
+  player.state.volume = 100; 
+}); // Useful for internal side-effects that must force-sync.
+
+// 3. Custom Meta Injection: Injects data seamlessly into the ReactorEvent payload for listeners to read.
 withMeta({ customSource: "gamepad" }, () => {
   player.intent.playing = true;
-});
+}); // startMeta & endMeta under the hood
 
 player.on("intent.playing", (e) => {
   console.log(e.customSource); // "gamepad"

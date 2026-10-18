@@ -1,5 +1,5 @@
 import { CTX } from "@core/consts";
-import { resetMeta } from "@utils/obj";
+import { resetMeta } from "@utils/meta";
 
 /** Transaction object representing a unit of work in the reactor system. */
 export interface Transaction {

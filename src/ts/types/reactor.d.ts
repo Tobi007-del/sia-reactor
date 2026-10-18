@@ -51,7 +51,10 @@ export interface Target<T, P extends WildPaths<T> = WildPaths<T>> {
 export type Payload<T, P extends WildPaths<T> = WildPaths<T>, D extends number = MaxDepth> = DirectPayload<T, P> | UpdatePayload<T, P, D>;
 
 /** Extensible meta shape injected into payloads via `...CTX.meta`. */
-export interface ReactorMeta {}
+export interface ReactorMeta {
+  /** Flag indicating whether the mutation was forced, bypassing equality checks. */
+  forced?: boolean;
+}
 export interface BasePayload<T, P extends WildPaths<T> = WildPaths<T>> extends ReactorMeta {
   /** Current target context for the active propagation path. Same reference to `target` in `watch()`. */
   currentTarget: Target<T, P>;

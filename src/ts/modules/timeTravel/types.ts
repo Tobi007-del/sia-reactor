@@ -16,7 +16,7 @@ export interface HistoryEntry<T extends object = any, P extends Paths<T> = Paths
   hadKey?: boolean; // optional for lighter payload
   /** For multi-reactor management, identifies who the entry belongs to */
   rid: ReactorModuleId;
-  /** Time elapsed since the last chronicled frame */
+  /** Time elapsed since the last chronicled node */
   deltat: number;
 }
 
@@ -28,11 +28,11 @@ export interface HistoryTransaction<T extends object = any, P extends Paths<T> =
   label?: string;
   /** The collection of nodes that make up this atomic transaction */
   nodes: HistoryNode<T, P>[];
-  /** Time elapsed since the last chronicled frame. */
+  /** Time elapsed since the last chronicled node */
   deltat: number;
-  /** The timestamp when the transaction began. */
+  /** The timestamp when the transaction began */
   start: number;
-  /** The timestamp when the transaction completed. */
+  /** The timestamp when the transaction completed */
   end: number;
 }
 
@@ -42,8 +42,6 @@ export type HistoryNode<T extends object = any, P extends Paths<T> = Paths<T>> =
 export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T>> extends Omit<ReactorModulePathConfig<T, P>, "disabled"> {
   /** Maximum number of history frames to keep (Memory Cap). Takes effect on the next entry. @default  `1000000000`. */
   limit: number;
-  /** Multiplier for the delay between events during playback (1 = real-time, 2 = double speed, 0.5 = half speed). @default  `1`. */
-  playbackRate: number;
   /** Max delay between events during playback (ms). @default  `2000`. */
   maxPlaybackDelay: number;
   /** Hook: Intercept/Modify history entries before they're added to the timeline.
@@ -53,11 +51,13 @@ export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T
    * @returns The modified entry to be added, or `false` to block the entry from being added to the timeline.
    */
   beforeEntry?: (entry: HistoryEntry<T, P>, history: Array<HistoryNode<T, P>>, event: REvent<any, P> | Payload<any, P>) => HistoryEntry<T, P> | boolean;
-  /** Hook: Invoked after a history frame (entry or transaction) is applied during teleportation.
-   * @param frame The history frame that was applied, which can be either a single entry or a grouped transaction.
-   * @param forward A boolean indicating the direction of teleportation, where `true` means moving forward in time and `false` means moving backward in time.
+  /** Hook: Intercept/Modify history nodes before they're applied to the reactor(s).
+   * @param node The history node that is about to be applied, which can be either a single entry or a grouped transaction.
+   * @param history The reference to the history state, which can be used for context-aware heuristics.
+   * @param forward A boolean where `true` means moving forward in time and `false` means moving backward in time.
+   * @returns The modified node to be applied, or `false` to block the node from being applied.
    */
-  onApply: (frame: HistoryNode<T, P>, forward: boolean) => void;
+  beforeApply?: (node: HistoryNode<T, P>, history: Array<HistoryNode<T, P>>, forward: boolean) => HistoryNode<T, P> | boolean;
 }
 
 export interface TimeTravelState<T extends object, P extends Paths<T> = Paths<T>> {
@@ -69,8 +69,10 @@ export interface TimeTravelState<T extends object, P extends Paths<T> = Paths<T>
   tracking: boolean;
   /** The manual playhead (Index in the Timeline) */
   currentFrame: number;
-  /** Whether automated playback is currently paused. */
+  /** Whether automated playback is currently paused */
   paused: boolean;
-  /** Whether the playhead is moving in the forward direction when playing. */
+  /** Whether the playhead is moving in the forward direction when playing */
   forward: boolean;
+  /** Multiplier for the delay between events during playback (1 = real-time, 2 = double speed); can be written to. @default  `1`. */
+  playbackRate: number;
 }

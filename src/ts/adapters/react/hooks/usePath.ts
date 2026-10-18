@@ -34,8 +34,8 @@ export function usePath<T extends object, P extends WildPaths<T>>(target: T | Re
     rtr = tgtRef.current !== target || !rtrRef.current ? ((tgtRef.current = target), (rtrRef.current = getReactor(target, true, build))) : rtrRef.current,
     optsRef = useRef(options);
   optsRef.current = options; // preventing staleness
-  const subscribe = useCallback((notify: () => void) => rtr[(optsRef.current.sync ? "watch" : "on") as "on"](path, () => (versionRef.current++, notify()), optsRef.current), [rtr, path]);
-  const getSnapshot = useCallback(() => versionRef.current, []);
+  const getSnapshot = useCallback(() => versionRef.current, []),
+    subscribe = useCallback((notify: () => void) => rtr[(optsRef.current.sync ? "watch" : "on") as "on"](path, () => (versionRef.current++, notify()), optsRef.current), [rtr, path]);
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot); // Feed React a primitive number to track tearing, zero cloning.
   return getPath(rtr.core, path);
 }

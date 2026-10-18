@@ -17,7 +17,7 @@ export interface PersistConfig<T extends object, P extends Paths<T> = Paths<T>> 
   strict: boolean;
   /** Whether to hold the initial hydration payload in memory to hydrate late-attaching reactors, free memory with `.clearCache()`. @default  `false`. */
   cachePayload: boolean;
-  /** Hook: Intercept/Modify data retrieved from adapter before it hits the Reactors.
+  /** Hook: Intercept/Modify data retrieved from adapter before it hits the Reactors, use `state.hydrated` after.
    * @param payload The data retrieved from storage.
    * @returns The modified payload, or `false` to block hydration entirely.
    */

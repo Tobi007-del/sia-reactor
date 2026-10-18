@@ -2,7 +2,8 @@ import { CTX, RAW, INERTIA, REJECTABLE, INDIFFABLE, TERMINATOR, VERSION, SSVERSI
 import { ReactorEvent } from "./event";
 import type { REvent, Target, Payload, Getter, Setter, Deleter, Watcher, Listener, ListenerOptions, ListenerRecord, WatcherRecord, GetterRecord, SetterRecord, DeleterRecord, SyncOptions, ReactorBuild } from "@defs/reactor";
 import type { PathBranchValue, Paths, PathKey, PathValue, WildPaths, MaxDepth } from "@defs/obj";
-import { canHandle, getTrailRecords, parseEvtOpts, hasPath, getPath, setPath, deletePath, getDepth, force, nuke } from "@utils/obj";
+import { canHandle, getTrailRecords, parseEvtOpts, hasPath, getPath, setPath, deletePath, getDepth, nuke } from "@utils/obj";
+import { force } from "@utils/meta";
 import { BaseReactorModule as ReactorModule, ReactorModuleId } from "@modules/base";
 
 /*
@@ -121,7 +122,7 @@ export class Reactor<T extends object> {
           safeValue = value?.[RAW] || value;
           unchanged = this.config.equalityFunction!(safeValue, safeOldValue);
         }
-        if (!indiffable && unchanged && !CTX.usingForce && keyStr !== "length") return this.log(`🔄 [\`set\` Trap] Unchanged for "${keyStr}" on [${paths}]`), true; // Arrays silently update length before firing set trap, can't risk UI going blind
+        if (!indiffable && unchanged && !CTX.meta?.forced && keyStr !== "length") return this.log(`🔄 [\`set\` Trap] Unchanged for "${keyStr}" on [${paths}]`), true; // Arrays silently update length before firing set trap, can't risk UI going blind
         if (this.config.set) terminated = (value = this.config.set(object as PathBranchValue<T>, key as PathKey<T>, value, oldValue, receiver, paths)) === TERMINATOR;
         if (this.setters) {
           const wildcords = this.setters.get("*");
@@ -478,10 +479,6 @@ export class Reactor<T extends object> {
   public get<P extends WildPaths<T>>(path: P, callback: Getter<T, P>, options?: SyncOptions): GetterRecord<T>["clup"] {
     return this.onSync("get", path, callback, options, () => getPath(this.core, path));
   }
-  /** Registers a get mediator for a path that only triggers once. */
-  public gonce<P extends WildPaths<T>>(path: P, callback: Getter<T, P>, options?: SyncOptions): GetterRecord<T>["clup"] {
-    return this.get<P>(path, callback, { ...parseEvtOpts(options, EVT_OPTS.MEDIATOR), once: true });
-  }
   /**
    * Removes a get mediator for a path.
    * @param path Path or wildcard path.
@@ -504,10 +501,6 @@ export class Reactor<T extends object> {
   public set<P extends WildPaths<T>>(path: P, callback: Setter<T, P>, options?: SyncOptions): SetterRecord<T>["clup"] {
     return this.onSync("set", path, callback, options, () => (force(() => setPath(this.core, path, getPath(this.core, path))), this.tick(path)));
   }
-  /** Registers a set mediator for a path that only triggers once. */
-  public sonce<P extends WildPaths<T>>(path: P, callback: Setter<T, P>, options?: SyncOptions): SetterRecord<T>["clup"] {
-    return this.set<P>(path, callback, Object.assign(parseEvtOpts(options, EVT_OPTS.MEDIATOR), { once: true }));
-  }
   /**
    * Removes a set mediator for a path.
    * @param path Path or wildcard path.
@@ -529,10 +522,6 @@ export class Reactor<T extends object> {
    */
   public delete<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>, options?: SyncOptions): DeleterRecord<T>["clup"] {
     return this.onSync("delete", path, callback, options, () => deletePath(this.core, path));
-  }
-  /** Registers a delete mediator for a path that only triggers once. */
-  public donce<P extends WildPaths<T>>(path: P, callback: Deleter<T, P>, options?: SyncOptions): DeleterRecord<T>["clup"] {
-    return this.delete<P>(path, callback, Object.assign(parseEvtOpts(options, EVT_OPTS.MEDIATOR), { once: true }));
   }
   /**
    * Removes a delete mediator for a path.

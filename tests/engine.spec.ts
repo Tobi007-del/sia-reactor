@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { reactive, TERMINATOR } from "@src/ts";
+import { reactive, TERMINATOR, volatile } from "@src/ts";
+import { force } from "@src/ts/utils";
 import { effect } from "@adapters/vanilla";
-import { TimeTravelModule, PersistModule, MemoryAdapter, HistoryEntry } from "@src/ts/modules";
+import { TimeTravelModule, PersistModule, MemoryAdapter, HistoryEntry, createTxPathMerger, transaction } from "@src/ts/modules";
 
 describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
   // ===========================================================================
@@ -55,6 +56,40 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
 
       // Watchers fire instantly, Listeners wait for the tick
       expect(timeline).toEqual(["Sync Watcher", "Mutation Complete", "Async Listener"]);
+    });
+
+    it("must bypass equality checks and propagate forced metadata when forced", () => {
+      const state = reactive({ count: 10 });
+      let eventPayload: any = null;
+      let watcherPayload: any = null;
+
+      state.watch("count", (_, p) => (watcherPayload = p));
+      state.on("count", (e) => (eventPayload = e));
+
+      // Normal write with same value should be ignored
+      state.count = 10;
+      state.tick();
+      expect(watcherPayload).toBeNull();
+      expect(eventPayload).toBeNull();
+
+      // Forced write with same value must trigger and deliver forced: true
+      force(() => {
+        state.count = 10;
+      });
+      expect(watcherPayload).not.toBeNull();
+      expect(watcherPayload.forced).toBe(true);
+
+      state.tick();
+      expect(eventPayload).not.toBeNull();
+      expect(eventPayload.forced).toBe(true);
+
+      // Subsequent unforced write with same value should be ignored again
+      watcherPayload = null;
+      eventPayload = null;
+      state.count = 10;
+      state.tick();
+      expect(watcherPayload).toBeNull();
+      expect(eventPayload).toBeNull();
     });
 
     it("must respect TERMINATOR soft rejections from mediators", () => {
@@ -163,6 +198,35 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       expect((timeModule.state.history[1] as HistoryEntry).to).toBe(11);
     });
 
+    it("must prune history from currentFrame or specified index upwards", () => {
+      const state = reactive({ count: 0 });
+      const timeModule = new TimeTravelModule({ synchronous: true });
+      state.use(timeModule);
+
+      state.count = 1;
+      state.count = 2;
+      state.count = 3;
+      expect(timeModule.state.history.length).toBe(3);
+      expect(timeModule.state.currentFrame).toBe(3);
+      expect(timeModule.canRedo).toBe(false);
+
+      // Undo 2 steps to frame 1
+      timeModule.undo(2);
+      expect(timeModule.state.currentFrame).toBe(1);
+      expect(timeModule.canRedo).toBe(true);
+
+      // Prune from currentFrame upwards (discards frames 1 and 2)
+      timeModule.prune();
+      expect(timeModule.state.history.length).toBe(1);
+      expect(timeModule.state.currentFrame).toBe(1);
+      expect(timeModule.canRedo).toBe(false);
+
+      // Prune to 0
+      timeModule.prune(0);
+      expect(timeModule.state.history.length).toBe(0);
+      expect(timeModule.state.currentFrame).toBe(0);
+    });
+
     it("must solve the 'Explicit Undefined' paradox using hadKey flags", () => {
       const state = reactive({ session: { token: "abc" } } as any);
       const timeModule = new TimeTravelModule();
@@ -210,6 +274,60 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       await timeModule.play();
 
       expect(state.position).toBe(30);
+    });
+
+    it("must collapse net-zero mutations and prune containers in nested transactions", () => {
+      const state = reactive({ x: 0, y: 0, z: 0 });
+      const timeModule = new TimeTravelModule({ synchronous: true, beforeEntry: createTxPathMerger() });
+      state.use(timeModule);
+
+      // Root transaction with child transaction where everything net-zeros out
+      transaction(() => {
+        state.x = 10;
+        transaction(() => {
+          state.y = 20;
+          state.y = 0;
+        });
+        state.x = 0;
+      });
+      state.tick();
+
+      expect(timeModule.state.history.length).toBe(0);
+      expect(timeModule.state.currentFrame).toBe(0);
+
+      // Partial net-zero: child net-zeros, root retains entry
+      transaction(() => {
+        state.z = 99;
+        transaction(() => {
+          state.y = 50;
+          state.y = 0;
+        });
+      });
+      state.tick();
+
+      expect(timeModule.state.history.length).toBe(1);
+      expect(timeModule.state.currentFrame).toBe(1);
+      const rootTx = timeModule.state.history[0] as any;
+      expect(rootTx.nodes.length).toBe(1);
+      expect(rootTx.nodes[0].path).toBe("z");
+      expect(rootTx.nodes[0].to).toBe(99);
+
+      // Diffing option in transaction path merger
+      const noDiffState = reactive(volatile({ a: 0, b: 0 }));
+      const noDiffTime = new TimeTravelModule({ synchronous: true, beforeEntry: createTxPathMerger({ diffing: false }) });
+      noDiffState.use(noDiffTime);
+
+      transaction(() => {
+        noDiffState.a = 0;
+        noDiffState.b = 1;
+      });
+      noDiffState.tick();
+
+      expect(noDiffTime.state.history.length).toBe(1);
+      const noDiffTx = noDiffTime.state.history[0] as any;
+      expect(noDiffTx.nodes.length).toBe(2);
+      expect(noDiffTx.nodes[0].path).toBe("a");
+      expect(noDiffTx.nodes[1].path).toBe("b");
     });
   });
 

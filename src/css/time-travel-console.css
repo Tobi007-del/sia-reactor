@@ -48,8 +48,8 @@
 
 .sia-tt-console-dock {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  right: 16px;
+  bottom: 16px;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -74,7 +74,7 @@
   right: 0;
   bottom: calc(100% + 8px);
   width: min(360px, calc(100vw - 50px));
-  max-height: calc(100vh - 50px);
+  max-height: calc(100vh - 60px);
   background: var(--sia-tt-bg);
   border: 1px solid var(--sia-tt-line);
   border-radius: 12px;
@@ -204,7 +204,7 @@
 
 .sia-tt-io {
   min-height: 84px;
-  max-height: calc((100vh - 318px) / 2);
+  max-height: calc((100vh - 360px) / 2);
   resize: vertical;
   border: 1px solid var(--sia-tt-line);
   background: var(--sia-tt-input-bg);
