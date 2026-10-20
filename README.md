@@ -104,7 +104,7 @@ import { setPath, getPath, mergeObjs } from "sia-reactor/utils";
 
 ```javascript
 import { reactive, Reactor } from "sia-reactor";
-import "sia-reactor/utils"; // deep object helpers (setPath/getPath/deletePath/hasPath/parsePathObj/fanout/force/mergeObjs/deepClone/nuke...) take note of `fanout`!
+import "sia-reactor/utils"; // deep object helpers (setPath/getPath/deletePath/hasPath/mirror/parsePathObj/fanout/force/mergeObjs/deepClone/nuke...) take note of `fanout` & `mirror`!
 import "sia-reactor/modules"; // built-in modules + storage adapters
 import "sia-reactor/adapters/vanilla"; // Autotracker + effect API + TimeTravelConsole class
 import "sia-reactor/adapters/react"; // useReactor/useSelector/usePath hooks

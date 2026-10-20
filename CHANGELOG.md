@@ -1,5 +1,17 @@
 # sia-reactor
 
+## 0.0.58
+
+### Patch Changes
+
+- Bug fixes on path mirroring
+
+## 0.0.57
+
+### Patch Changes
+
+- Fixed path functions to allow array drilling
+
 ## 0.0.56
 
 ### Patch Changes

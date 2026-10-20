@@ -1,7 +1,7 @@
 import { BaseReactorModule, ReactorModuleId } from "../base";
 import { Reactor } from "@core/reactor";
 import type { Payload, REvent } from "@defs/reactor";
-import { setPath, deletePath, fanout, deepClone, getPath, hasPath } from "@utils/obj";
+import { setPath, deletePath, fanout, deepClone, getPath } from "@utils/obj";
 import { setTimeout } from "@utils/fn";
 import { clamp } from "@utils/num";
 import type { Paths } from "@defs/obj";
@@ -56,7 +56,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     this.prune(); // destroy the "Alternate Future" (the redo stack) before recording
     const timestamp = (e as any).timestamp ?? performance.now(); // payloads dont allow timestamps since they're sync, but you asked for it
     let _mirror: string,
-      en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: e.reactor.snapshot(false, !this.config.mirrorReads || (_mirror = mirror(e.target.path)) === e.target.path || !hasPath(e.reactor.core, _mirror) ? e.target.oldValue : getPath(e.reactor.core as any, _mirror)), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.timestamp } as HistoryEntry<any, P>;
+      en = { path: e.target.path, to: e.reactor.snapshot(false, e.target.value), from: e.reactor.snapshot(false, !this.config.mirrorReads || (_mirror = mirror(e.target.path, e.reactor.core)) === e.target.path ? e.target.oldValue : getPath(e.reactor.core as any, _mirror)), type: (e as any).staticType ?? e.type, rid, deltat: timestamp - this.timestamp } as HistoryEntry<any, P>;
     !e.target.hadKey && (en.hadKey = false); // reducing serialized bloat
     const px = (e.tx && this.txMap.get(e.tx)) || null; // previous tx
     if (this.config.beforeEntry) {
@@ -132,9 +132,8 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   protected applyNode(node: HistoryNode<T, P>, forward = true): void {
     if ("nodes" in node) for (let len = node.nodes.length, i = forward ? 0 : len - 1; forward ? i < len : i >= 0; forward ? i++ : i--) this.applyNode(node.nodes[i], forward);
     else {
-      let _mirror: string;
       const rtr = this.deps.get(node.rid) || this.deps.values().next().value!, // owner of the node index for (single||multi)-reactor management
-        path = (!this.config.mirrorWrites || (_mirror = mirror(node.path, false)) === node.path || !hasPath(rtr.core, _mirror) ? node.path : _mirror) as any;
+        path = (!this.config.mirrorWrites ? node.path : mirror(node.path, rtr.core, false)) as any;
       (forward ? node.type === "delete" : node.hadKey === false) ? deletePath(rtr.core, path) : setPath(rtr.core, path, deepClone(forward ? node.to : node.from, rtr.config));
     }
   }
@@ -215,7 +214,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
   // ===========================================================================
   /**
    * Export the current time-travel session state as a JSON string.
-   * @param replacer Optional replacer function used by `JSON.stringify`.
+  * @param replacer Optional replacer function used by `JSON.stringify`.
    * @param space Optional spacing parameter for pretty-printing.
    * @returns The serialized session JSON.
    */

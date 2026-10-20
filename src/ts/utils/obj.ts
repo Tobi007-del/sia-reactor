@@ -49,7 +49,7 @@ export function getPath<T extends object, const S extends string = ".", P extend
       if (!Array.isArray(currObj[key]) || !(key in currObj)) return currObj[key];
       currObj = currObj[key][Number(iStr)];
     } else {
-      if (!isObj<Record<string, any>>(currObj) || !(key in currObj)) return currObj[key];
+      if (!isObj<Record<string, any>>(currObj, false) || !(key in currObj)) return currObj[key];
       currObj = currObj[key];
     }
   }
@@ -105,7 +105,7 @@ export function deletePath<T extends object, const S extends string = ".", P ext
       if (i === len - 1) delete currObj[key][Number(iStr)];
       else currObj = currObj[key][Number(iStr)];
     } else {
-      if (!isObj<Record<string, any>>(currObj) || !(key in currObj)) return;
+      if (!isObj<Record<string, any>>(currObj, false) || !(key in currObj)) return;
       if (i === len - 1) delete currObj[key];
       else currObj = currObj[key];
     }
@@ -130,7 +130,7 @@ export function hasPath<T extends object, const S extends string = ".", P extend
       if (i === len - 1) return true;
       currObj = currObj[key][Number(iStr)];
     } else {
-      if (!isObj<Record<string, any>>(currObj) || !(key in currObj)) return false;
+      if (!isObj<Record<string, any>>(currObj, false) || !(key in currObj)) return false;
       if (i === len - 1) return true;
       currObj = currObj[key];
     }
