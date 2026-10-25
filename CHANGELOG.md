@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.59
+
+### Patch Changes
+
+- Bug fixes on the time travel module
+
 ## 0.0.58
 
 ### Patch Changes

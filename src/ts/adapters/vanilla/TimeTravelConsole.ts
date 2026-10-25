@@ -134,7 +134,11 @@ export class TimeTravelConsole {
         playPause.disabled = s.paused && redo.disabled;
         rewind.disabled = !s.paused || !s.currentFrame;
         range.value = String(Math.min(s.currentFrame, s.history.length));
-        payload.value = JSON.stringify(s.currentFrame ? s.history[s.currentFrame - 1] : { genesis: true, value: s.initialState }, null, 2);
+        try {
+          payload.value = JSON.stringify(s.currentFrame ? s.history[s.currentFrame - 1] : { genesis: true, value: s.initialState }, null, 2);
+        } catch (_) {
+          payload.value = s.currentFrame ? JSON.stringify(s.history[s.currentFrame - 1], null, 2) : '{ "genesis": true }';
+        }
       }),
       effect(() => {
         clr.disabled = copy.disabled = imp.disabled = !this.state.import.trim().length;

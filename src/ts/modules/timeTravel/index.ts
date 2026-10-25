@@ -117,7 +117,7 @@ export class TimeTravelModule<T extends object = any, P extends Paths<T> = Paths
     this.state.paused = false;
     const target = clamp(0, index, this.state.history.length), // Ensure bounds
       forward = target > this.state.currentFrame;
-    withMeta({ timeTravel: `${forward ? "forward" : "backward"}${live ? "-live" : ""}` as const }, () => {
+    withMeta({ silent: true, timeTravel: `${forward ? "forward" : "backward"}${live ? "-live" : ""}` as const }, () => {
       while (this.state.currentFrame !== target) {
         let node = this.state.history[forward ? this.state.currentFrame : this.state.currentFrame - 1], // Grab the correct node (Current unapplied node if going forward, previous applied node if going backward)
           res = this.config.beforeApply?.(node, this.state.history, forward); // the power to edit history as it re-enacts
