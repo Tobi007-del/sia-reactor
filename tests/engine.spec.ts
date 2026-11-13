@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { reactive, TERMINATOR, volatile } from "@src/ts";
 import { force } from "@src/ts/utils";
 import { effect } from "@adapters/vanilla";
-import { TimeTravelModule, PersistModule, MemoryAdapter, HistoryEntry, createTxPathMerger, transaction } from "@src/ts/modules";
+import { TemporalModule, PersistModule, MemoryAdapter, HistoryEntry, createTxPathMerger, transaction } from "@src/ts/modules";
 
 describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
   // ===========================================================================
@@ -171,11 +171,11 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
   // ===========================================================================
   // MODULE 2: TIME TRAVEL & SPACETIME PHYSICS
   // ===========================================================================
-  describe("TimeTravelModule: The Spacetime Engine", () => {
+  describe("TemporalModule: The Spacetime Engine", () => {
     it("must execute O(1) bidirectional teleportation and timeline branching", () => {
       const state = reactive({ volume: 50, playing: false });
-      const timeModule = new TimeTravelModule();
-      state.use(timeModule);
+      const temporalModule = new TemporalModule();
+      state.use(temporalModule);
 
       state.volume = 60;
       state.tick(); // Frame 0
@@ -185,7 +185,7 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       state.tick(); // Frame 2
 
       // Undo 2 steps (Back to Frame 0)
-      timeModule.step(2, false);
+      temporalModule.step(2, false);
       expect(state.volume).toBe(60);
       expect(state.playing).toBe(false);
 
@@ -194,43 +194,43 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       state.tick();
 
       // The timeline should have overwritten Frame 1 and 2
-      expect(timeModule.state.history.length).toBe(2);
-      expect((timeModule.state.history[1] as HistoryEntry).to).toBe(11);
+      expect(temporalModule.state.history.length).toBe(2);
+      expect((temporalModule.state.history[1] as HistoryEntry).to).toBe(11);
     });
 
     it("must prune history from currentFrame or specified index upwards", () => {
       const state = reactive({ count: 0 });
-      const timeModule = new TimeTravelModule({ synchronous: true });
-      state.use(timeModule);
+      const temporalModule = new TemporalModule({ synchronous: true });
+      state.use(temporalModule);
 
       state.count = 1;
       state.count = 2;
       state.count = 3;
-      expect(timeModule.state.history.length).toBe(3);
-      expect(timeModule.state.currentFrame).toBe(3);
-      expect(timeModule.canRedo).toBe(false);
+      expect(temporalModule.state.history.length).toBe(3);
+      expect(temporalModule.state.currentFrame).toBe(3);
+      expect(temporalModule.canRedo).toBe(false);
 
       // Undo 2 steps to frame 1
-      timeModule.undo(2);
-      expect(timeModule.state.currentFrame).toBe(1);
-      expect(timeModule.canRedo).toBe(true);
+      temporalModule.undo(2);
+      expect(temporalModule.state.currentFrame).toBe(1);
+      expect(temporalModule.canRedo).toBe(true);
 
       // Prune from currentFrame upwards (discards frames 1 and 2)
-      timeModule.prune();
-      expect(timeModule.state.history.length).toBe(1);
-      expect(timeModule.state.currentFrame).toBe(1);
-      expect(timeModule.canRedo).toBe(false);
+      temporalModule.prune();
+      expect(temporalModule.state.history.length).toBe(1);
+      expect(temporalModule.state.currentFrame).toBe(1);
+      expect(temporalModule.canRedo).toBe(false);
 
       // Prune to 0
-      timeModule.prune(0);
-      expect(timeModule.state.history.length).toBe(0);
-      expect(timeModule.state.currentFrame).toBe(0);
+      temporalModule.prune(0);
+      expect(temporalModule.state.history.length).toBe(0);
+      expect(temporalModule.state.currentFrame).toBe(0);
     });
 
     it("must solve the 'Explicit Undefined' paradox using hadKey flags", () => {
       const state = reactive({ session: { token: "abc" } } as any);
-      const timeModule = new TimeTravelModule();
-      state.use(timeModule);
+      const temporalModule = new TemporalModule();
+      state.use(temporalModule);
 
       // Frame 0: Explicitly set existing key to undefined
       state.session.token = undefined;
@@ -241,7 +241,7 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       state.tick();
 
       // Rewind to Genesis
-      timeModule.jumpTo(-1);
+      temporalModule.jumpTo(-1);
 
       // It must know to delete `newFlag`, but RESTORE `token` to "abc"
       expect(state.session.newFlag).toBeUndefined();
@@ -253,8 +253,8 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       vi.useRealTimers(); // Requires real-time physics for custom timeouts
 
       const state = reactive({ position: 0 });
-      const timeModule = new TimeTravelModule({ maxPlaybackDelay: 100 });
-      state.use(timeModule);
+      const temporalModule = new TemporalModule({ maxPlaybackDelay: 100 });
+      state.use(temporalModule);
 
       state.position = 10;
       state.tick();
@@ -267,19 +267,19 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       state.position = 30;
       state.tick();
 
-      timeModule.jumpTo(-1); // Reset to Genesis
+      temporalModule.jumpTo(-1); // Reset to Genesis
       expect(state.position).toBe(0);
 
       // Run the VCR
-      await timeModule.play();
+      await temporalModule.play();
 
       expect(state.position).toBe(30);
     });
 
     it("must collapse net-zero mutations and prune containers in nested transactions", () => {
       const state = reactive({ x: 0, y: 0, z: 0 });
-      const timeModule = new TimeTravelModule({ synchronous: true, beforeEntry: createTxPathMerger() });
-      state.use(timeModule);
+      const temporalModule = new TemporalModule({ synchronous: true, beforeEntry: createTxPathMerger() });
+      state.use(temporalModule);
 
       // Root transaction with child transaction where everything net-zeros out
       transaction(() => {
@@ -292,8 +292,8 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       });
       state.tick();
 
-      expect(timeModule.state.history.length).toBe(0);
-      expect(timeModule.state.currentFrame).toBe(0);
+      expect(temporalModule.state.history.length).toBe(0);
+      expect(temporalModule.state.currentFrame).toBe(0);
 
       // Partial net-zero: child net-zeros, root retains entry
       transaction(() => {
@@ -305,17 +305,17 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       });
       state.tick();
 
-      expect(timeModule.state.history.length).toBe(1);
-      expect(timeModule.state.currentFrame).toBe(1);
-      const rootTx = timeModule.state.history[0] as any;
+      expect(temporalModule.state.history.length).toBe(1);
+      expect(temporalModule.state.currentFrame).toBe(1);
+      const rootTx = temporalModule.state.history[0] as any;
       expect(rootTx.nodes.length).toBe(1);
       expect(rootTx.nodes[0].path).toBe("z");
       expect(rootTx.nodes[0].to).toBe(99);
 
       // Diffing option in transaction path merger
       const noDiffState = reactive(volatile({ a: 0, b: 0 }));
-      const noDiffTime = new TimeTravelModule({ synchronous: true, beforeEntry: createTxPathMerger({ diffing: false }) });
-      noDiffState.use(noDiffTime);
+      const noDiffTemporal = new TemporalModule({ synchronous: true, beforeEntry: createTxPathMerger({ diffing: false }) });
+      noDiffState.use(noDiffTemporal);
 
       transaction(() => {
         noDiffState.a = 0;
@@ -323,8 +323,8 @@ describe("S.I.A. Engine: 10,000 RPM Stress Test", () => {
       });
       noDiffState.tick();
 
-      expect(noDiffTime.state.history.length).toBe(1);
-      const noDiffTx = noDiffTime.state.history[0] as any;
+      expect(noDiffTemporal.state.history.length).toBe(1);
+      const noDiffTx = noDiffTemporal.state.history[0] as any;
       expect(noDiffTx.nodes.length).toBe(2);
       expect(noDiffTx.nodes[0].path).toBe("a");
       expect(noDiffTx.nodes[1].path).toBe("b");

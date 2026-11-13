@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { reactive } from "@core/mixins";
-import { IndexedDBAdapter, PersistModule, TimeTravelModule } from "@src/ts/modules";
-import { createTextBundler } from "@modules/timeTravel/heuristics/text";
+import { IndexedDBAdapter, PersistModule, TemporalModule } from "@src/ts/modules";
+import { createTextBundler } from "@modules/temporal/heuristics/text";
 
 export type DemoPageId = "chat" | "counters";
 export type DemoMessage = {
@@ -26,12 +26,12 @@ export const demoPages: Array<{ id: DemoPageId; label: string; title: string; de
   },
 ];
 
-export const hubTime = new TimeTravelModule({ blacklist: ["heuristicChat", "rawChat", "count"] }).untrack();
-export const heuristicChatTime = new TimeTravelModule({ whitelist: ["heuristicChat"], beforeEntry: createTextBundler({ toString: (v) => v[0] }) }).untrack();
-export const rawChatTime = new TimeTravelModule({ whitelist: ["rawChat"] }).untrack();
-export const counterTime = new TimeTravelModule({ whitelist: ["count"] }).untrack();
+export const hubTemporal = new TemporalModule({ blacklist: ["heuristicChat", "rawChat", "count"] }).untrack();
+export const heuristicChatTemporal = new TemporalModule({ whitelist: ["heuristicChat"], beforeEntry: createTextBundler({ toString: (v) => v[0] }) }).untrack();
+export const rawChatTemporal = new TemporalModule({ whitelist: ["rawChat"] }).untrack();
+export const counterTemporal = new TemporalModule({ whitelist: ["count"] }).untrack();
 
-export const persist = new PersistModule({ key: "SIA_DEMO", adapter: new IndexedDBAdapter({ durability: "relaxed" }), snapshot: true, throttle: 150 }).attach(hubTime.state, "hubTime.state").attach(heuristicChatTime.state, "heuristicChatTime.state").attach(rawChatTime.state, "rawChatTime.state").attach(counterTime.state, "counterTime.state");
+export const persist = new PersistModule({ key: "SIA_DEMO", adapter: new IndexedDBAdapter({ durability: "relaxed" }), snapshot: true, throttle: 150 }).attach(hubTemporal.state, "hubTemporal.state").attach(heuristicChatTemporal.state, "heuristicChatTemporal.state").attach(rawChatTemporal.state, "rawChatTemporal.state").attach(counterTemporal.state, "counterTemporal.state");
 
 export const state = reactive({
   page: getInitialPage(),
@@ -40,9 +40,9 @@ export const state = reactive({
   rawChat: ["", 0, 0, "none"] as Chat,
 });
 
-state.use(persist, "app").use(hubTime).use(heuristicChatTime).use(rawChatTime).use(counterTime), persist.state.once("hydrated", () => [hubTime, heuristicChatTime, rawChatTime, counterTime].forEach((mdle) => mdle.track()));
+state.use(persist, "app").use(hubTemporal).use(heuristicChatTemporal).use(rawChatTemporal).use(counterTemporal), persist.state.once("hydrated", () => [hubTemporal, heuristicChatTemporal, rawChatTemporal, counterTemporal].forEach((mdle) => mdle.track()));
 
-if (typeof window !== "undefined") ((window as any).state = state), ((window as any).persist = persist), ((window as any).hubTime = hubTime), ((window as any).heuristicChatTime = heuristicChatTime), ((window as any).rawChatTime = rawChatTime), ((window as any).counterTime = counterTime);
+if (typeof window !== "undefined") ((window as any).state = state), ((window as any).persist = persist), ((window as any).hubTemporal = hubTemporal), ((window as any).heuristicChatTemporal = heuristicChatTemporal), ((window as any).rawChatTemporal = rawChatTemporal), ((window as any).counterTemporal = counterTemporal);
 
 export function incrementCount() {
   state.count += 1;

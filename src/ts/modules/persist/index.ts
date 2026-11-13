@@ -1,4 +1,4 @@
-import { BaseReactorModule, ReactorModuleId } from "../base";
+import { BaseReactorModule } from "../base";
 import { StorageAdapter, LocalStorageAdapter, AsyncStorageAdapter, type StorageAdapterConstructor } from "./storage";
 import { fanoutOptsArr, setPath, deletePath, getPath, fanout, mergeObjs, parseEvtOpts } from "@utils/obj";
 import { setTimeout } from "@utils/fn";
@@ -19,7 +19,7 @@ import { PERSIST_MODULE_BUILD } from "./build";
 export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>> extends BaseReactorModule<T, PersistConfig<T, P>, PersistState> {
   public static readonly moduleName: string = "persist";
   public adapter!: StorageAdapter<T> | AsyncStorageAdapter<T>;
-  protected readonly tickMap = new Map<ReactorModuleId, Array<string>>();
+  protected readonly tickMap = new Map<string, Array<string>>();
   protected cache: any = null;
   protected hydrateSeq = 0;
   protected persistSeq = 0;
@@ -40,10 +40,10 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     this.config.on("synchronous", this.handleSynchronous, { signal: this.signal });
   }
 
-  protected override onAttach(rtr: Reactor<any>, rid: ReactorModuleId): void {
+  protected override onAttach(rtr: Reactor<any>, rid: string): void {
     rtr.config.eventBubbling = true;
     this.attachPaths(rtr, rid);
-    this.state.hydrated && this.cache && this.hydrate(this.deps.size > 1 ? getPath(this.cache, rid as any) : this.cache, rtr, rid);
+    this.state.hydrated && this.cache && this.hydrate(this.canNest(rid) ? getPath(this.cache, rid as any) : this.cache, rtr, rid);
   }
 
   protected override onPath(): void {
@@ -86,7 +86,7 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
       }
       if (seq !== this.hydrateSeq || !saved) return;
       this.cache = this.config.cachePayload ? saved : null;
-      for (const [rid, rtr] of this.deps) this.hydrate(this.deps.size > 1 ? getPath(saved, rid as any) : saved, rtr, rid, opts, false); // allows retrieving with path-like ids, ticking after full revival for data accuracy
+      for (const [rid, rtr] of this.deps) this.hydrate(this.canNest(rid) ? getPath(saved, rid as any) : saved, rtr, rid, opts, false); // allows retrieving with path-like ids, ticking after full revival for data accuracy
       for (const [rid, rtr] of this.deps) rtr.tick(opts.depth || !this.config.whitelist ? "*" : this.tickMap.get(rid) || []);
       this.tickMap.clear(); // faster than sequential delete
     } finally {
@@ -99,7 +99,7 @@ export class PersistModule<T extends object = any, P extends Paths<T> = Paths<T>
     value && this.adapter?.remove(this.config.key);
   }
 
-  protected hydrate(entry: any, rtr: Reactor<any>, rid: ReactorModuleId = this.rids.get(rtr)!, { depth, merge = true, atomic, skipUndef } = parseEvtOpts(this.config.fanout, fanoutOptsArr, "depth"), tick = true): void {
+  protected hydrate(entry: any, rtr: Reactor<any>, rid: string = this.rids.get(rtr)!, { depth, merge = true, atomic, skipUndef } = parseEvtOpts(this.config.fanout, fanoutOptsArr, "depth"), tick = true): void {
     if (!entry) return;
     const whites = this.getPaths(rid),
       blacks = this.getPaths(rid, this.config.blacklist, true),

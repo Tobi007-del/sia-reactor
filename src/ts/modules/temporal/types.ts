@@ -1,5 +1,5 @@
 import { Paths, PathValue } from "@defs/obj";
-import { ReactorModuleId, ReactorModulePathConfig } from "../base";
+import { ReactorModulePathConfig } from "../base";
 import type { Payload, REvent } from "@defs/reactor";
 
 /** The DNA of a specific moment in time. Records the 'Desire' (Intent) or the 'Fact' (State). */
@@ -15,7 +15,7 @@ export interface HistoryEntry<T extends object = any, P extends Paths<T> = Paths
   /** Did the key for the value exist on its parent object? */
   hadKey?: boolean; // optional for lighter payload
   /** For multi-reactor management, identifies who the entry belongs to */
-  rid: ReactorModuleId;
+  rid: string;
   /** Time elapsed since the last chronicled node */
   deltat: number;
 }
@@ -39,7 +39,7 @@ export interface HistoryTransaction<T extends object = any, P extends Paths<T> =
 /** A distinct tick on the timeline; can be a solitary mutation entry or a grouped atomic transaction. */
 export type HistoryNode<T extends object = any, P extends Paths<T> = Paths<T>> = HistoryEntry<T, P> | HistoryTransaction<T, P>;
 
-export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T>> extends Omit<ReactorModulePathConfig<T, P>, "disabled"> {
+export interface TemporalConfig<T extends object, P extends Paths<T> = Paths<T>> extends Omit<ReactorModulePathConfig<T, P>, "disabled"> {
   /** Maximum number of history frames to keep (Memory Cap). Takes effect on the next entry. @default  `1000000000`. */
   limit: number;
   /** Max delay between events during playback (ms). @default  `2000`. */
@@ -60,9 +60,9 @@ export interface TimeTravelConfig<T extends object, P extends Paths<T> = Paths<T
   beforeApply?: (node: HistoryNode<T, P>, history: Array<HistoryNode<T, P>>, forward: boolean) => HistoryNode<T, P> | boolean;
 }
 
-export interface TimeTravelState<T extends object, P extends Paths<T> = Paths<T>> {
+export interface TemporalState<T extends object, P extends Paths<T> = Paths<T>> {
   /** The "Genesis" snapshot (Raw Data) */
-  initialState: { [rid: ReactorModuleId]: any };
+  initialState: { [rid: string]: any };
   /** The "Timeline" of mutations (Chronological Log of Entries and Grouped Transactions) */
   history: Array<HistoryNode<T, P>>;
   /** Whether it is currently chronicling mutations, only for monitoring changes; lies on hydration. */

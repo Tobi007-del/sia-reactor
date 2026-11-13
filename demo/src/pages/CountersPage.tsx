@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useAnyReactor, useAnySelector, usePath, useReactor, useSelector } from "@adapters/react";
 import { effect } from "@adapters/vanilla";
-import { decrementCount, incrementCount, resetCount, state, counterTime } from "../model";
-import { TimeTravelConsole } from "@adapters/react";
+import { decrementCount, incrementCount, resetCount, state, counterTemporal } from "../model";
+import { TemporalConsole } from "@adapters/react";
 
 function CounterCard({ label, count, renders }: { label: string; count: number; renders: number }) {
   return (
@@ -111,7 +111,7 @@ export function CountersPage() {
           <VanillaEffectPanel />
         </div>
       </div>
-      <TimeTravelConsole time={counterTime} title={"Counters Tape"} color={"var(--accent-2)"} startOpen={false} />
+      <TemporalConsole module={counterTemporal} title={"Counters Tape"} color={"var(--accent-2)"} startOpen={false} />
     </section>
   );
 }

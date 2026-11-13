@@ -4,7 +4,7 @@ import type { REvent, Target, Payload, Getter, Setter, Deleter, Watcher, Listene
 import type { PathBranchValue, Paths, PathKey, PathValue, WildPaths, MaxDepth } from "@defs/obj";
 import { canHandle, getTrailRecords, parseEvtOpts, hasPath, getPath, setPath, deletePath, getDepth, nuke } from "@utils/obj";
 import { force } from "@utils/meta";
-import { BaseReactorModule as ReactorModule, ReactorModuleId } from "@modules/base";
+import { BaseReactorModule as ReactorModule } from "@modules/base";
 
 /*
  * ========= THE S.I.A (State & Intent Architecture) `Reactor` CODE PATTERN WATCHLIST =========
@@ -638,7 +638,7 @@ export class Reactor<T extends object> {
    * @param id Optional identification tag for this instance in the module.
    * @returns Current `Reactor` instance for fluent chaining.
    */
-  public use(target: ReactorModule<T>, id?: ReactorModuleId): this {
+  public use(target: ReactorModule<T>, id?: string): this {
     return (this.modules ??= new Set()).add(target.setup(this, id)), this;
   }
   /** Resets this reactor instance to its initial state. */

@@ -106,9 +106,9 @@ import { setPath, getPath, mergeObjs } from "sia-reactor/utils";
 import { reactive, Reactor } from "sia-reactor";
 import "sia-reactor/utils"; // deep object helpers (setPath/getPath/deletePath/hasPath/mirror/parsePathObj/fanout/force/mergeObjs/deepClone/nuke...) take note of `fanout` & `mirror`!
 import "sia-reactor/modules"; // built-in modules + storage adapters
-import "sia-reactor/adapters/vanilla"; // Autotracker + effect API + TimeTravelConsole class
+import "sia-reactor/adapters/vanilla"; // Autotracker + effect API + TemporalConsole class
 import "sia-reactor/adapters/react"; // useReactor/useSelector/usePath hooks
-import "sia-reactor/styles/time-travel-console.css"; // TimeTravelConsole CSS
+import "sia-reactor/styles/temporal-console.css"; // TemporalConsole CSS
 ```
 
 ### CDN / Browser (Global)
@@ -264,15 +264,15 @@ persist.config.whitelist = { ui: ["settings.theme"], app: ["settings.volume"] };
 
 ```
 
-#### The Time Travel Module
+#### The Temporal Module
 Record state frames, step through history, and optionally attach a ready-to-use vanilla debug overlay. Beware of paradoxes, one timeline is used by default to keep things linear and predictable.
 
 ```javascript
-import { TimeTravelModule } from "sia-reactor/modules";
-import { effect, TimeTravelConsole } from "sia-reactor/adapters/vanilla";
-import "sia-reactor/css/time-travel-console.css";
+import { TemporalModule } from "sia-reactor/modules";
+import { effect, TemporalConsole } from "sia-reactor/adapters/vanilla";
+import "sia-reactor/styles/temporal-console.css";
 
-const time = new TimeTravelModule({ 
+const temporal = new TemporalModule({ 
   limit: 300, // max frames to keep in memory, older frames are dropped
   loop: false, // if true, stepping past the last frame will wrap to the first frame and vice versa
   playbackRate: 150, // multiplier for the delay between events during playback
@@ -282,22 +282,22 @@ const time = new TimeTravelModule({
     createTextBundler({ whitelist: ["store.search.query", "store.profile.bio"] }) // Smart string diffing for text inputs
   ) // Intercept and compress history in-flight before it settles!
 });
-store.use(time); // can chain (.use(persist).use(time))
+store.use(temporal); // can chain (.use(persist).use(temporal))
 
 // If persist uses an async adapter (e.g. IndexedDB), stop tracking till after hydration:
-time.untrack(); // immediately after or at creation (new Time...ule.().untrack())
-persist.state.once("hydrated", time.track); // `hydrated` starts `false`, wait until it flips.
-effect(() => persist.state.hydrated && time.track(), { once: true }) // same logic, different look :)
+temporal.untrack(); // immediately after or at creation (new TemporalModule().untrack())
+persist.state.once("hydrated", temporal.track); // `hydrated` starts `false`, wait until it flips.
+effect(() => persist.state.hydrated && temporal.track(), { once: true }) // same logic, different look :)
 
 // Here's a cool trick:
-persist.attach(time.state, "timeTravel.state") // now, history will survive reloads
+persist.attach(temporal.state, "temporal.state") // now, history will survive reloads
 
-const overlay = new TimeTravelConsole(time, { color: "#e26e02", startOpen: false, devOnly: true, container: document.body }); // optional debug interface for visualization
+const overlay = new TemporalConsole(temporal, { color: "#e26e02", startOpen: false, devOnly: true, container: document.body }); // optional debug interface for visualization
 ```
 ```jsx
-import { TimeTravelConsole } from "sia-reactor/adapters/react";
+import { TemporalConsole } from "sia-reactor/adapters/react";
 
-<TimeTravelConsole time={time} color="#e26e02" startOpen devOnly /> // react-safe instance lifecycle management, e.g. for HMR predictability.
+<TemporalConsole module={temporal} color="#e26e02" startOpen devOnly /> // react-safe instance lifecycle management, e.g. for HMR predictability.
 ```
 
 Useful methods: `play()`, `pause()`, `rewind()`, `undo()`, `redo()`, `step(n, forward)`, `jumpTo(frame)`, `track()`, `untrack()`, `clear()`, `export(replacer)`, `import(json, reviver)`.
@@ -522,7 +522,7 @@ rtr.on("todos", (e: REvent<User, "todos", 1>) => {
 ### Perks worth Highlighting
 
 #### 1. Transactions & Grouping
-By default, every mutation is recorded as a single frame. For UI gestures like dragging a slider, you want to group hundreds of rapid mutations into a single Undo/Redo step for the `TimeTravelModule`. 
+By default, every mutation is recorded as a single frame. For UI gestures like dragging a slider, you want to group hundreds of rapid mutations into a single Undo/Redo step for the `TemporalModule`. 
 
 Transactions natively support **deep nesting** and preserve your semantic labels. When paired with `createTxPathMerger`, duplicate paths inside these envelopes are compressed in-flight.
 
@@ -552,12 +552,12 @@ Text inputs generate a massive amount of rapid, noisy history. However, if you a
 The `createTextBundler` heuristic intelligently groups keystrokes and respects word boundaries. You pair this with `setValueWithCursor` to flawlessly sync the DOM. You are essentially building your own browser input physics, skip if using basic controlled or uncontrolled inputs.
 
 ```javascript
-import { TimeTravelModule } from "sia-reactor/modules";
-import { createTextBundler, setValueWithCursor } from "sia-reactor/modules/timeTravel/heuristics";
+import { TemporalModule } from "sia-reactor/modules";
+import { createTextBundler, setValueWithCursor } from "sia-reactor/modules/temporal/heuristics";
 import { effect } from "sia-reactor/adapters/vanilla";
 
 // 1. The Setup: State storing [text, selectionStart, selectionEnd, selectionDirection]
-const chatTime = new TimeTravelModule({ 
+const chatTemporal = new TemporalModule({ 
   whitelist: ["chatbox"], 
   beforeEntry: createTextBundler({ 
     toString: (v) => v[0], // Extract the string at index [0] so the bundler can intelligently diff the typing
@@ -569,7 +569,7 @@ const chatTime = new TimeTravelModule({
     strictMerges: true, // typing -> deleting -> typing becomes separate frames
   }) 
 });
-store.use(chatTime);
+store.use(chatTemporal);
 
 // 2. The UI Integration (React Example)
 import { keyEventAllowed } from "sia-reactor/utils"; 
@@ -596,7 +596,7 @@ function ChatInput() {
       }} 
       onKeyDown={(e) => {
         const action = keyEventAllowed(e, keySettings); // utility to interpret key combos according to your settings
-        action === "undo" ? chatTime.undo() : action === "redo" && chatTime.redo(); // trigger time travel actions accordingly.
+        action === "undo" ? chatTemporal.undo() : action === "redo" && chatTemporal.redo(); // trigger temporal actions accordingly
       }}
     />
   );
@@ -612,7 +612,7 @@ S.I.A. Reactor features a high-performance, synchronous meta-context engine. It 
 import { withMeta } from "sia-reactor/utils";
 import { silence } from "sia-reactor/modules";
 
-// 1. The Silence Wrapper: Executes mutations that the TimeTravelModule will not record. same as withMeta({ silent: true }, () => ...)
+// 1. The Silence Wrapper: Executes mutations that the TemporalModule will not record. same as withMeta({ silent: true }, () => ...)
 silence(() => {
   player.state.volume = 100; 
 }); // Useful for internal side-effects that shouldn't ruin the undo/redo history.

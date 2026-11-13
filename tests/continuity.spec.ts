@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { reactive } from "@src/ts";
-import { PersistModule, TimeTravelModule, AsyncStorageAdapter, type StorageAdapterConfig } from "@src/ts/modules";
+import { PersistModule, TemporalModule, AsyncStorageAdapter, type StorageAdapterConfig } from "@src/ts/modules";
 
 class AsyncMemoryAdapter extends AsyncStorageAdapter<StorageAdapterConfig> {
   public static store = new Map<string, any>();
@@ -43,17 +43,17 @@ class FlakyAsyncMemoryAdapter extends AsyncMemoryAdapter {
 
 const wait = (ms = 15) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe("Continuity proof: async persistence + time travel", () => {
+describe("Continuity proof: async persistence + temporal", () => {
   it("restores frame parity and replay output after a reload-like re-bootstrap", async () => {
     AsyncMemoryAdapter.store.clear();
 
     // Session A
-    const timeA = new TimeTravelModule().untrack();
-    const persistA = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeA.state, "timeTravel.state");
+    const temporalA = new TemporalModule().untrack();
+    const persistA = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(temporalA.state, "temporal.state");
     const stateA = reactive({ count: 0 });
 
-    stateA.use(persistA, "app").use(timeA);
-    persistA.state.once("hydrated", timeA.track);
+    stateA.use(persistA, "app").use(temporalA);
+    persistA.state.once("hydrated", temporalA.track);
 
     await wait();
 
@@ -66,29 +66,29 @@ describe("Continuity proof: async persistence + time travel", () => {
 
     await wait();
 
-    const expectedHistoryLen = timeA.state.history.length;
-    const expectedFrame = timeA.state.currentFrame;
+    const expectedHistoryLen = temporalA.state.history.length;
+    const expectedFrame = temporalA.state.currentFrame;
     const expectedCount = stateA.count;
 
     // Session B (reload simulation)
-    const timeB = new TimeTravelModule().untrack();
-    const persistB = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeB.state, "timeTravel.state");
+    const temporalB = new TemporalModule().untrack();
+    const persistB = new PersistModule({ key: "CONTINUITY", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(temporalB.state, "temporal.state");
     const stateB = reactive({ count: 0 });
 
-    stateB.use(persistB, "app").use(timeB);
-    persistB.state.once("hydrated", timeB.track);
+    stateB.use(persistB, "app").use(temporalB);
+    persistB.state.once("hydrated", temporalB.track);
 
     await wait();
 
     expect(persistB.state.hydrated).toBe(true);
-    expect(timeB.state.history.length).toBe(expectedHistoryLen);
-    expect(timeB.state.currentFrame).toBe(expectedFrame);
+    expect(temporalB.state.history.length).toBe(expectedHistoryLen);
+    expect(temporalB.state.currentFrame).toBe(expectedFrame);
     expect(stateB.count).toBe(expectedCount);
 
-    timeB.jumpTo(-1);
+    temporalB.jumpTo(-1);
     expect(stateB.count).toBe(0);
 
-    await timeB.play();
+    await temporalB.play();
     expect(stateB.count).toBe(expectedCount);
   });
 
@@ -96,12 +96,12 @@ describe("Continuity proof: async persistence + time travel", () => {
     AsyncMemoryAdapter.store.clear();
     FlakyAsyncMemoryAdapter.failGetOnce = true;
 
-    const time = new TimeTravelModule().untrack();
-    const persist = new PersistModule({ key: "RECOVER", throttle: 0, adapter: FlakyAsyncMemoryAdapter, snapshot: true }).attach(time.state, "timeTravel.state");
+    const temporal = new TemporalModule().untrack();
+    const persist = new PersistModule({ key: "RECOVER", throttle: 0, adapter: FlakyAsyncMemoryAdapter, snapshot: true }).attach(temporal.state, "temporal.state");
     const state = reactive({ count: 0 });
 
-    state.use(persist, "app").use(time);
-    persist.state.once("hydrated", time.track);
+    state.use(persist, "app").use(temporal);
+    persist.state.once("hydrated", temporal.track);
 
     await wait();
 
@@ -116,17 +116,17 @@ describe("Continuity proof: async persistence + time travel", () => {
     expect(saved?.app?.count).toBe(7);
   });
 
-  it("restores multi-reactor branches (app, ui, timeTravel.state) after reload", async () => {
+  it("restores multi-reactor branches (app, ui, temporal.state) after reload", async () => {
     AsyncMemoryAdapter.store.clear();
 
     // Session A
-    const timeA = new TimeTravelModule().untrack();
+    const temporalA = new TemporalModule().untrack();
     const uiA = reactive({ theme: "dark" });
-    const persistA = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeA.state, "timeTravel.state").attach(uiA, "ui");
+    const persistA = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(temporalA.state, "temporal.state").attach(uiA, "ui");
     const appA = reactive({ count: 0 });
 
-    appA.use(persistA, "app").use(timeA);
-    persistA.state.once("hydrated", timeA.track);
+    appA.use(persistA, "app").use(temporalA);
+    persistA.state.once("hydrated", temporalA.track);
 
     await wait();
 
@@ -142,25 +142,25 @@ describe("Continuity proof: async persistence + time travel", () => {
     const expected = {
       appCount: appA.count,
       uiTheme: uiA.theme,
-      historyLen: timeA.state.history.length,
-      frame: timeA.state.currentFrame,
+      historyLen: temporalA.state.history.length,
+      frame: temporalA.state.currentFrame,
     };
 
     // Session B
-    const timeB = new TimeTravelModule().untrack();
+    const temporalB = new TemporalModule().untrack();
     const uiB = reactive({ theme: "dark" });
-    const persistB = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(timeB.state, "timeTravel.state").attach(uiB, "ui");
+    const persistB = new PersistModule({ key: "MULTI", throttle: 0, adapter: AsyncMemoryAdapter, snapshot: true }).attach(temporalB.state, "temporal.state").attach(uiB, "ui");
     const appB = reactive({ count: 0 });
 
     appB.use(persistB, "app");
-    persistB.state.once("hydrated", timeB.track);
+    persistB.state.once("hydrated", temporalB.track);
 
     await wait();
 
     expect(persistB.state.hydrated).toBe(true);
     expect(appB.count).toBe(expected.appCount);
     expect(uiB.theme).toBe(expected.uiTheme);
-    expect(timeB.state.history.length).toBe(expected.historyLen);
-    expect(timeB.state.currentFrame).toBe(expected.frame);
+    expect(temporalB.state.history.length).toBe(expected.historyLen);
+    expect(temporalB.state.currentFrame).toBe(expected.frame);
   });
 });

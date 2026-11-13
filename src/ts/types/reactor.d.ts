@@ -3,7 +3,7 @@ import { Reactor } from "@core/reactor";
 import { ReactorEvent } from "@core/event";
 import { Paths, WildPaths, ChildPaths, PathValue, PathBranchValue, PathKey, MaxDepth } from "./obj";
 import { Reactive } from "@core/mixins";
-import { Transaction } from "@modules/timeTravel/transaction";
+import { Transaction } from "@modules/temporal/transaction";
 
 // ===========================================================================
 // CORE MARKERS & STATE WRAPPERS

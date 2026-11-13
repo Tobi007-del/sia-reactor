@@ -4,8 +4,8 @@ import type { Pure } from "@core/mixins";
 import { Payload, Reactor } from "@defs/reactor";
 import { getReactor } from "@core/mixins";
 import type { DeepMerge, Unflatten, WildPaths, PathValue, PathBranchValue, ChildPaths, MaxDepth, Paths, DeepPartial } from "@defs/obj";
-import { transaction, txId } from "@modules/timeTravel/transaction";
-import { silence } from "@modules/timeTravel/silence";
+import { transaction, txId } from "@modules/temporal/transaction";
+import { silence } from "@modules/temporal/silence";
 import { force } from "./meta";
 
 export let arrRegex = /^([^\[\]]+)\[(\d+)\]$/;

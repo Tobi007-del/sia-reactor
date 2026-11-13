@@ -1,5 +1,23 @@
 # sia-reactor
 
+## 0.0.62
+
+### Patch Changes
+
+- Import fixes
+
+## 0.0.61
+
+### Patch Changes
+
+- Time travel to Temporal
+
+## 0.0.60
+
+### Patch Changes
+
+- Time travel bug fix
+
 ## 0.0.59
 
 ### Patch Changes

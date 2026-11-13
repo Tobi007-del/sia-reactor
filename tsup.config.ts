@@ -15,11 +15,12 @@ export default defineConfig([
     clean: true,
     ...config,
     async onSuccess() {
-      const keys = ["time-travel-console"];
-      keys.forEach((key) => {
-        const source = `src/css/${key}.css`;
-        if (existsSync(source)) mkdirSync("dist/styles", { recursive: true }), copyFileSync(source, `dist/styles/${key}.css`), console.log(`✅ ${key} CSS stylesheet copied!`);
-      });
+      const source = "src/css/temporal-console.css";
+      if (existsSync(source)) {
+        mkdirSync("dist/styles", { recursive: true });
+        copyFileSync(source, "dist/styles/temporal-console.css");
+        console.log("✅ Temporal console CSS stylesheets copied!");
+      }
     },
   },
   {

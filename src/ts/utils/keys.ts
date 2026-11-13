@@ -152,6 +152,9 @@ export function getTermsForKey(combo: string, settings: KeysSettings): { overrid
  */
 export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, settings: S): false | (S["shortcuts"] extends object ? keyof S["shortcuts"] : never) | (S["whitelist"] extends readonly string[] ? (string[] extends S["whitelist"] ? never : Lowercase<S["whitelist"][number]>) : never) {
   if (settings.disabled) return false;
+  const activeEl = getActiveEl((e.target as Node)?.ownerDocument); // shadow DOM proof
+  if ((e.key === " " || e.key === "Enter") && activeEl?.matches("button,input[type='button'],input[type='submit']")) return false;
+  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
   if (settings.linkedPhase)
     if (e.type === "keydown") downKeys.set(e.code, e);
     else if (e.type === "keyup") {
@@ -159,9 +162,6 @@ export function keyEventAllowed<const S extends KeysSettings>(e: KeyboardEvent, 
       setTimeout(() => downKeys.delete(e.code), 0); // Delay deletion so peer/parent listeners in the event chain can still read it
       if (!down || down.cancelBubble) return false; // If !down, a child element stopped the keydown before it reached us. If down.cancelBubble, a peer listener stopped it.
     }
-  const activeEl = getActiveEl((e.target as Node)?.ownerDocument); // shadow DOM proof
-  if ((e.key === " " || e.key === "Enter") && activeEl?.matches("button,input[type='button'],input[type='submit']")) return false;
-  if (e.currentTarget !== activeEl && activeEl?.matches("input,textarea,[contenteditable]") && !(e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey)) return false;
   const combo = stringifyKeyEvent(e),
     { override, block, action, whitelisted } = getTermsForKey(combo, settings);
   if (block) return false;
@@ -178,7 +178,7 @@ const downKeys = new Map<string, KeyboardEvent>();
  * @param keyFn Function to format each combo.
  * @returns Display label (for example: `" (ctrl+z) or (meta+z)"`).
  */
-export const formatKeyTooltip = (combo: string | string[] = "", keyFn = (c = "") => cleanKeyCombo(c).replace(" ", "space")): string => {
+export const formatKeyTooltip = (combo: string | string[] = "", keyFn = (c = "") => cleanKeyCombo(c).replace(" ", "space").replace("meta", "cmd")): string => {
   const combined = combo?.length ? (Array.isArray(combo) ? combo.map(keyFn).join(" or ") : keyFn(combo)) : "";
   return combined ? ` (${combined})` : "";
 };

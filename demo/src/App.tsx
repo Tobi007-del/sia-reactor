@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import { TimeTravelConsole, useReactor } from "@adapters/react";
+import { TemporalConsole, useReactor } from "@adapters/react";
 import { createEl } from "@utils/dom";
-import "@styles/time-travel-console.css";
+import "@styles/temporal-console.css";
 import { AppNav } from "./components/AppNav";
-import { hubTime, state, useRouteSync } from "./model";
+import { hubTemporal, state, useRouteSync } from "./model";
 import { ChatPage } from "./pages/ChatPage";
 import { CountersPage } from "./pages/CountersPage";
 
@@ -24,7 +24,7 @@ export function App() {
 
   return (
     <div className="demo-app">
-      <TimeTravelConsole time={hubTime} title="Hub Tape" color={"var(--accent)"} startOpen={false} />
+      <TemporalConsole module={hubTemporal} title="Hub Tape" color={"var(--accent)"} startOpen={false} />
       <header ref={topbarRef} className="topbar">
         <div>
           <p className="eyebrow">SIA Reactor demo workspace</p>

@@ -2,7 +2,7 @@ import { withMeta } from "@utils/meta";
 
 /**
  * Executes `fn` with `silent: true` merged into all current `Reactor` payloads.
- * Use this to perform mutations you don't want recorded by `TimeTravelModule`.
+ * Use this to perform mutations you don't want recorded by `TemporalModule`.
  * @param fn Function to execute with `silent` meta.
  * @param bool Override for ease of use in dynamic usecases, defaults to `true`
  */
@@ -12,7 +12,7 @@ export function silence<T>(fn: () => T, bool = true): T {
 
 declare module "@defs/reactor" {
   interface ReactorMeta {
-    /** Flag indicating whether the mutation was silenced and should not be recorded by the `TimeTravelModule`. */
+    /** Flag indicating whether the mutation was silenced and should not be recorded by the `TemporalModule`. */
     silent?: boolean;
   }
 }

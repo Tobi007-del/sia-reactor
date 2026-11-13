@@ -2,8 +2,6 @@ import { Reactor } from "@defs/reactor";
 import { Paths } from "@defs/obj";
 import { BaseReactorModule } from ".";
 
-export type ReactorModuleId = string | number;
-
 export type ModulePaths<P extends string = string> = P[] | Partial<Record<string, P[]>>;
 
 export interface ReactorModulePathConfig<T extends object, P extends Paths<T> = Paths<T>> {
