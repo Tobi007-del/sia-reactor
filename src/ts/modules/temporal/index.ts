@@ -89,7 +89,7 @@ export class TemporalModule<T extends object = any, P extends Paths<T> = Paths<T
    * Prunes history nodes from the given index (or currentFrame) upwards, discarding the future redo stack.
    * @param index Starting history index to prune upwards from, defaults to `this.state.currentFrame`.
    */
-  public prune(index: number = this.state.currentFrame): void {
+  public prune(index = this.state.currentFrame): void {
     const n = clamp(0, index, this.state.history.length);
     this.state.history.length > n && this.state.currentFrame >= (this.state.history.length = n) && force(() => (this.state.currentFrame = n));
   }

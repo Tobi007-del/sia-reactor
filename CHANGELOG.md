@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 0.0.63
+
+### Patch Changes
+
+- Allow key events on select and option elements, and minor temporal prune cleanup
+
 ## 0.0.62
 
 ### Patch Changes
