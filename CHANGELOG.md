@@ -1,5 +1,11 @@
 # sia-reactor
 
+## 1.0.0
+
+### Major Changes
+
+- Official v1.0.0 stable release of State & Intent Architecture (S.I.A.) engine. Enterprise-ready data DOM with transactional mutation routing and multi-phase state observation.
+
 ## 0.0.63
 
 ### Patch Changes
